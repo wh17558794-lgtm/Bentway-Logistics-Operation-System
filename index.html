@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>BentWay Logistics Operations System</title>
+  <link rel="icon" href="assets/bentway-brand-mark.png?v=20260813-1" type="image/png">
+  <script>
+    (() => {
+      const variant = new URLSearchParams(window.location.search).get('login');
+      if (variant?.toLowerCase() !== 'a') {
+        document.documentElement.dataset.loginVariant = 'b';
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/tabler-icons/tabler-icons.min.css?v=3.46.0">
+  <link rel="stylesheet" href="app.css?v=20260813-9">
+  <link rel="stylesheet" href="operations-ui.css?v=20260814-7">
+</head>
+<body>
+  <div class="boot-screen" id="bootScreen">
+    <div class="boot-mark"><img src="assets/bentway-brand-mark.png" alt=""></div>
+    <p>Preparing the operations system...</p>
+  </div>
+
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="auth-visual" aria-hidden="true">
+      <div class="auth-visual-image"></div>
+      <div class="auth-visual-overlay"></div>
+      <div class="auth-visual-content">
+        <div class="brand-lockup brand-lockup-light">
+          <span class="brand-mark brand-mark-image"><img src="assets/bentway-brand-mark.png" alt=""></span>
+          <span><strong>BentWay</strong><small>LOGISTICS</small></span>
+        </div>
+        <div class="visual-copy">
+          <p class="eyebrow">BENTWAY OPERATIONS</p>
+        <h1>From warehouse arrival, to the final mile.</h1>
+        <p>Manage shipment status, warehouse records and delivery planning in one system.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-panel">
+      <div class="auth-card" aria-labelledby="loginTitle">
+        <div class="auth-brand-logo">
+          <img src="assets/bentway-logo.png" alt="BentWay Logistics">
+        </div>
+        <div class="auth-heading auth-heading-compact">
+          <p class="eyebrow" id="loginTitle">STAFF LOGIN</p>
+        </div>
+
+        <div class="config-alert" id="configAlert" hidden>
+            <strong>One configuration step remaining</strong>
+            <span>Paste the full Publishable key into <code>supabase-config.js</code>.</span>
+        </div>
+
+        <form class="login-form" id="loginForm" novalidate>
+          <div class="auth-field-group">
+              <label class="field-label" for="emailInput">Email</label>
+            <input class="text-input" id="emailInput" name="email" type="email" autocomplete="username" placeholder="name@company.com" aria-describedby="emailHint" required>
+              <span class="field-hint" id="emailHint">Enter the company email registered by your administrator.</span>
+          </div>
+
+          <div class="auth-field-group">
+              <label class="field-label" for="passwordInput">Password</label>
+            <div class="password-wrap">
+                <input class="text-input" id="passwordInput" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+                <button class="password-toggle" id="passwordToggle" type="button" aria-label="Show password">Show</button>
+            </div>
+          </div>
+
+          <p class="form-error" id="loginError" role="alert" hidden></p>
+          <button class="primary-button login-button" id="loginButton" type="submit">
+            <span>Sign In</span>
+          </button>
+        </form>
+        <p class="auth-help">Accounts are created by the system administrator. Contact your administrator if you cannot sign in.</p>
+      </div>
+      <footer class="auth-footer">
+        <span>Authorised staff only</span>
+        <span>BentWay Logistics</span>
+      </footer>
+    </div>
+  </section>
+
+  <div class="app-shell" id="appShell" hidden>
+    <header class="workspace-bar" id="workspaceBar">
+      <div class="workspace-identity">
+        <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Open menu"><i class="ti ti-menu-2" aria-hidden="true"></i></button>
+        <span class="workspace-logo" aria-hidden="true"><img src="assets/bentway-brand-mark.png" alt=""></span>
+        <span class="workspace-separator" aria-hidden="true">/</span>
+        <span class="workspace-system">BentWay Logistics Operations System</span>
+        <span class="workspace-separator" aria-hidden="true">/</span>
+        <span class="workspace-page-label" id="workspacePageLabel">Pending Shipments</span>
+        <details class="intake-mode-picker" id="intakeModePicker" hidden>
+          <summary><span id="intakeModeLabel">Manual Entry</span><i class="ti ti-chevron-down" aria-hidden="true"></i></summary>
+          <div class="intake-mode-menu" role="menu" aria-label="Choose intake method">
+            <button class="intake-mode active" id="manualModeButton" type="button" data-intake-mode="manual" role="menuitem"><i class="ti ti-pencil" aria-hidden="true"></i><span>Manual Entry</span></button>
+            <button class="intake-mode" id="batchModeButton" type="button" data-intake-mode="batch" role="menuitem"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i><span>Excel / CSV Import</span></button>
+          </div>
+        </details>
+      </div>
+
+      <div class="workspace-actions">
+        <div class="workspace-action-group" data-topbar-actions="pending intake">
+          <div class="pending-bulk-actions" id="pendingBulkActions" data-pending-only aria-label="Actions for selected shipments">
+            <button class="bulk-action success" type="button" data-bulk-complete="delivered" title="Mark selected as Delivered" disabled><i class="ti ti-circle-check" aria-hidden="true"></i><span>Delivered</span></button>
+            <button class="bulk-action success" type="button" data-bulk-complete="picked_up" title="Mark selected as Picked Up" disabled><i class="ti ti-user-check" aria-hidden="true"></i><span>Picked Up</span></button>
+            <button class="bulk-action neutral" type="button" data-bulk-complete="warehouse_delivery" title="Mark selected as Warehouse Delivery" disabled><i class="ti ti-building-warehouse" aria-hidden="true"></i><span>Warehouse Delivery</span></button>
+            <button class="bulk-action danger" type="button" data-bulk-complete="returned" title="Mark selected as Returned" disabled><i class="ti ti-arrow-back-up" aria-hidden="true"></i><span>Return</span></button>
+            <button class="bulk-action danger" id="bulkDeleteButton" type="button" data-bulk-delete title="Permanently delete selected shipments" disabled><i class="ti ti-trash" aria-hidden="true"></i><span>Delete</span></button>
+          </div>
+          <button class="table-mode-toggle" id="tableModeToggle" type="button" data-pending-only aria-label="Switch to B table layout" title="Switch to B table layout">
+            <svg class="icon-tabler icon-tabler-switch-horizontal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M16 3l4 4l-4 4"></path>
+              <path d="M10 7l10 0"></path>
+              <path d="M8 13l-4 4l4 4"></path>
+              <path d="M4 17l9 0"></path>
+            </svg>
+          </button>
+          <label class="search-box workspace-search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input id="pendingSearch" type="search" placeholder="Search shipments">
+          </label>
+          <select class="filter-select" id="pendingStatusFilter" aria-label="Filter by status">
+            <option value="all">All pending statuses</option>
+            <option value="pending">Pending</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="on_hold">On Hold</option>
+            <option value="pending_warehouse_booking">Pending Warehouse Booking</option>
+            <option value="out_for_delivery">Out Of Delivery</option>
+            <option value="exception">Exception</option>
+          </select>
+          <button class="map-button" id="showOnMapButton" type="button" disabled>
+            <i class="ti ti-map-pin" aria-hidden="true"></i>View on Map <span id="selectedCount">0</span>
+          </button>
+        </div>
+
+        <div class="workspace-action-group" data-topbar-actions="completed" hidden>
+          <label class="search-box workspace-search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input id="completedSearch" type="search" placeholder="Search shipment history">
+          </label>
+          <select class="filter-select" id="outboundFilter" aria-label="Filter by dispatch method">
+            <option value="all">All dispatch methods</option>
+            <option value="delivered">Delivered</option>
+            <option value="picked_up">Picked up</option>
+            <option value="warehouse_delivery">Warehouse delivery</option>
+            <option value="returned">Returned</option>
+          </select>
+        </div>
+
+        <div class="workspace-action-group" data-topbar-actions="map" hidden>
+          <button class="secondary-button icon-button-label" id="backToPendingButton" type="button"><i class="ti ti-arrow-left" aria-hidden="true"></i><span>Back to Shipments</span></button>
+        </div>
+      </div>
+    </header>
+
+    <aside class="sidebar" id="sidebar">
+      <nav class="main-nav" aria-label="Primary navigation">
+        <button class="nav-item active" type="button" data-view="pending" title="Pending Shipments">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="icon-tabler icon-tabler-packages" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 16.5l-5 -3l5 -3l5 3v5.5l-5 3l0 -5.5"></path>
+              <path d="M2 13.5v5.5l5 3"></path>
+              <path d="M7 16.545l5 -3.03"></path>
+              <path d="M17 16.5l-5 -3l5 -3l5 3v5.5l-5 3l0 -5.5"></path>
+              <path d="M12 19l5 3"></path>
+              <path d="M17 16.5l5 -3"></path>
+              <path d="M12 13.5v-5.5l-5 -3l5 -3l5 3v5.5"></path>
+              <path d="M7 5.03v5.455"></path>
+              <path d="M12 8l5 -3"></path>
+            </svg>
+          </span>
+          <span class="nav-text">Pending Shipments</span>
+          <span class="nav-count" id="pendingNavCount">0</span>
+        </button>
+        <button class="nav-item" type="button" data-view="intake" title="Shipment Intake">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="icon-tabler icon-tabler-package-import" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21l-8 -4.5v-9l8 -4.5l8 4.5v4.5"></path>
+              <path d="M12 12l8 -4.5"></path>
+              <path d="M12 12v9"></path>
+              <path d="M12 12l-8 -4.5"></path>
+              <path d="M22 18h-7"></path>
+              <path d="M18 15l-3 3l3 3"></path>
+            </svg>
+          </span>
+          <span class="nav-text">Shipment Intake</span>
+        </button>
+        <button class="nav-item" type="button" data-view="completed" title="Shipment History">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="icon-tabler icon-tabler-history-toggle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 20.777a8.942 8.942 0 0 1 -2.48 -.969"></path>
+              <path d="M14 3.223a9.003 9.003 0 0 1 0 17.554"></path>
+              <path d="M4.579 17.093a8.961 8.961 0 0 1 -1.227 -2.592"></path>
+              <path d="M3.124 10.5c.16 -.95 .468 -1.85 .9 -2.675l.169 -.305"></path>
+              <path d="M6.907 4.579a8.954 8.954 0 0 1 3.093 -1.356"></path>
+              <path d="M12 8v4l3 3"></path>
+            </svg>
+          </span>
+          <span class="nav-text">Shipment History</span>
+        </button>
+        <button class="nav-item" type="button" data-view="map" title="Delivery Map">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="icon-tabler icon-tabler-map-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5"></path>
+              <path d="M9 4v13"></path>
+              <path d="M15 7v5.5"></path>
+              <path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879"></path>
+              <path d="M19 18v.01"></path>
+            </svg>
+          </span>
+          <span class="nav-text">Delivery Map</span>
+          <span class="nav-count nav-count-accent" id="mapNavCount" hidden>0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-summary">
+          <span class="user-avatar" id="userAvatar">U</span>
+          <span class="user-copy">
+            <strong id="userName">Staff Member</strong>
+            <small id="userRole">Role not set</small>
+          </span>
+        </div>
+        <button class="logout-button" id="logoutButton" type="button" title="Sign Out"><i class="ti ti-logout" aria-hidden="true"></i><span class="logout-text">Sign Out</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <section class="view active" id="pendingView" data-view-panel="pending">
+        <div class="content-card">
+          <div class="table-wrap">
+            <table class="data-table shipment-table pending-shipment-table" id="pendingShipmentTable" data-table-mode="a">
+              <thead>
+                <tr id="pendingTableHeadRow">
+                  <th class="check-cell"><input id="selectAllPending" type="checkbox" aria-label="Select all pending shipments"></th>
+                </tr>
+              </thead>
+              <tbody id="pendingTableBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="pendingEmpty" hidden>
+            <span><i class="ti ti-package-off" aria-hidden="true"></i></span>
+            <h3>No matching pending shipments</h3>
+            <p>Newly received shipments will appear here.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="intakeView" data-view-panel="intake">
+        <div class="content-card intake-panel" id="manualIntakePanel">
+          <form class="intake-form" id="manualShipmentForm" autocomplete="off" data-form-type="other">
+            <div class="form-section">
+              <div class="form-section-heading">
+                <strong><i class="ti ti-box" aria-hidden="true"></i>Shipment &amp; Storage Details</strong>
+                <span>Identify the shipment and record its warehouse location.</span>
+              </div>
+              <div class="form-grid">
+                <label class="form-field"><span>Tracking Number *</span><input name="tracking_number" required autocomplete="off" data-bw-no-autofill placeholder="Scan or enter tracking number"></label>
+                <label class="form-field"><span>Customer Reference</span><input name="customer_reference" autocomplete="off" data-bw-no-autofill></label>
+                <label class="form-field"><span>Container Number</span><input name="container_number" autocomplete="off" data-bw-no-autofill></label>
+                <label class="form-field"><span>Quantity</span><input name="quantity" type="number" min="1" step="1" value="1" autocomplete="off" data-bw-no-autofill></label>
+                <label class="form-field"><span>Weight (kg)</span><input name="weight_kg" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill placeholder="Optional"></label>
+                <label class="form-field"><span>Volume (m³)</span><input name="volume_m3" type="number" min="0" step="0.0001" autocomplete="off" data-bw-no-autofill placeholder="Optional"></label>
+                <label class="form-field"><span>Storage Location</span><input name="warehouse_location" autocomplete="off" data-bw-no-autofill placeholder="e.g. A-01"></label>
+                <label class="form-field"><span>Received At</span><input name="inbound_at" type="datetime-local" autocomplete="off" data-bw-no-autofill></label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-heading">
+                <strong><i class="ti ti-address-book" aria-hidden="true"></i>Customer &amp; Delivery Details</strong>
+                <span>Used for search, contact and delivery.</span>
+              </div>
+              <div class="form-grid">
+                <label class="form-field"><span>Customer *</span><select id="manualCustomerSelect" name="customer_id" required><option value="">Loading customers...</option></select></label>
+                <label class="form-field"><span>Recipient</span><input name="recipient_name" autocomplete="off" data-bw-no-autofill></label>
+                <label class="form-field"><span>Contact Phone</span><input name="recipient_phone" autocomplete="off" data-bw-no-autofill inputmode="tel"></label>
+                <label class="form-field form-field-wide"><span>Delivery Address *</span><input name="delivery_address" required autocomplete="off" data-bw-no-autofill placeholder="Street number and Unit / Lot details"></label>
+                <label class="form-field"><span>Suburb</span><input name="suburb" autocomplete="off" data-bw-no-autofill></label>
+                <label class="form-field"><span>State</span><input name="state" value="VIC" autocomplete="off" data-bw-no-autofill></label>
+                <label class="form-field"><span>Postcode</span><input name="postcode" autocomplete="off" data-bw-no-autofill inputmode="numeric"></label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-heading">
+                <strong><i class="ti ti-notes" aria-hidden="true"></i>Additional Information</strong>
+              </div>
+              <div class="form-grid">
+                <label class="form-field form-field-wide"><span>Delivery Instructions</span><textarea name="delivery_instructions" rows="3"></textarea></label>
+                <label class="form-field form-field-wide"><span>Internal Notes</span><textarea name="notes" rows="3"></textarea></label>
+              </div>
+            </div>
+
+            <div class="form-footer">
+              <button class="secondary-button icon-button-label" id="clearManualFormButton" type="button"><i class="ti ti-eraser" aria-hidden="true"></i><span>Clear</span></button>
+              <button class="primary-button submit-button icon-button-label" id="saveManualShipmentButton" type="button"><i class="ti ti-device-floppy" aria-hidden="true"></i><span>Save to Pending</span></button>
+            </div>
+          </form>
+        </div>
+
+        <div class="content-card intake-panel" id="batchIntakePanel" hidden>
+          <div class="batch-workspace">
+            <label class="file-drop" id="shipmentFileDrop">
+              <input id="shipmentFileInput" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden>
+              <span class="file-drop-icon"><i class="ti ti-file-upload" aria-hidden="true"></i></span>
+              <strong>Select an Excel or CSV file</strong>
+              <small>The file is read in your browser and is written to the database only after you confirm the import.</small>
+            </label>
+
+            <div class="batch-settings" id="batchSettings" hidden>
+              <div class="batch-file-summary">
+                <div><span>Selected file</span><strong id="batchFileName">No file selected</strong></div>
+                <button class="secondary-button" id="replaceBatchFileButton" type="button">Choose Another File</button>
+              </div>
+
+              <div class="sheet-controls">
+                <label class="form-field"><span>Customer for This Import *</span><select id="batchCustomerSelect"><option value="">Loading customers...</option></select></label>
+                <label class="form-field"><span>Worksheet</span><select id="batchSheetSelect"></select></label>
+                <label class="form-field"><span>Header Row</span><select id="batchHeaderRowSelect"></select></label>
+              </div>
+
+              <div class="mapping-heading">
+                <div><strong>Map Excel Columns</strong><p>The system will suggest matches. Check the tracking number and delivery address carefully.</p></div>
+                <span class="mapping-required">* Required mapping</span>
+              </div>
+              <div class="mapping-grid" id="batchMappingGrid"></div>
+
+              <div class="import-summary" id="importSummary"></div>
+              <div class="preview-wrap">
+                <table class="data-table import-preview-table">
+                  <thead><tr><th>Status</th><th>Tracking Number</th><th>Customer / Recipient</th><th>Delivery Address</th><th>Customer Reference</th></tr></thead>
+                  <tbody id="batchPreviewBody"></tbody>
+                </table>
+              </div>
+
+              <div class="form-footer">
+                <span class="form-footer-note" id="batchImportNote">Review the preview before importing.</span>
+                <button class="primary-button submit-button" id="importShipmentsButton" type="button">Import Valid Shipments</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="completedView" data-view-panel="completed">
+        <div class="content-card">
+          <div class="table-wrap">
+            <table class="data-table shipment-table completed-shipment-table">
+              <thead>
+                <tr>
+                  <th>Tracking No.</th>
+                  <th>Customer Reference</th>
+                  <th>Container No.</th>
+                  <th>Name</th>
+                  <th>Address</th>
+                  <th>Phone</th>
+                  <th>Dispatch Method</th>
+                  <th>Completed At</th>
+                  <th class="history-actions-cell">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="completedTableBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="completedEmpty" hidden>
+            <span><i class="ti ti-history-toggle" aria-hidden="true"></i></span>
+            <h3>No shipment history found</h3>
+            <p>Shipments will appear here after dispatch is completed.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="view map-view" id="mapView" data-view-panel="map">
+        <p class="map-selection-summary" id="mapSelectionSummary">Select shipments from Pending Shipments first.</p>
+        <div class="map-frame-wrap">
+            <iframe id="deliveryMapFrame" title="BentWay Delivery Map" src="map.html?v=20260815-1"></iframe>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="shipmentModal" hidden>
+    <section class="shipment-modal" role="dialog" aria-modal="true" aria-labelledby="shipmentModalTitle">
+      <header class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon" aria-hidden="true"><i class="ti ti-package"></i></span>
+          <div>
+            <p class="eyebrow">SHIPMENT DETAILS</p>
+            <h2 id="shipmentModalTitle">Shipment Details</h2>
+          </div>
+        </div>
+        <button class="modal-close" id="closeShipmentModalButton" type="button" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
+      </header>
+
+      <form id="shipmentEditForm" autocomplete="off" data-form-type="other">
+        <input id="editShipmentId" name="id" type="hidden">
+        <div class="modal-body">
+          <div class="form-section">
+            <div class="form-section-heading"><strong><i class="ti ti-box" aria-hidden="true"></i>Shipment &amp; Storage Details</strong></div>
+            <div class="form-grid">
+              <label class="form-field"><span>Tracking Number *</span><input name="tracking_number" required autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Customer *</span><select id="editCustomerSelect" name="customer_id" required></select></label>
+              <label class="form-field"><span>Customer Reference</span><input name="customer_reference" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Container Number</span><input name="container_number" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Quantity</span><input name="quantity" type="number" min="1" step="1" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Weight (kg)</span><input name="weight_kg" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Volume (m³)</span><input name="volume_m3" type="number" min="0" step="0.0001" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Storage Location</span><input name="warehouse_location" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Received At</span><input name="inbound_at" type="datetime-local" autocomplete="off" data-bw-no-autofill></label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-heading"><strong><i class="ti ti-address-book" aria-hidden="true"></i>Recipient &amp; Delivery Details</strong></div>
+            <div class="form-grid">
+              <label class="form-field"><span>Recipient</span><input name="recipient_name" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Contact Phone</span><input name="recipient_phone" autocomplete="off" data-bw-no-autofill inputmode="tel"></label>
+              <label class="form-field form-field-wide"><span>Delivery Address *</span><input name="delivery_address" required autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Suburb</span><input name="suburb" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>State</span><input name="state" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Postcode</span><input name="postcode" autocomplete="off" data-bw-no-autofill inputmode="numeric"></label>
+              <label class="form-field form-field-wide"><span>Delivery Instructions</span><textarea name="delivery_instructions" rows="3"></textarea></label>
+              <label class="form-field form-field-wide"><span>Internal Notes</span><textarea name="notes" rows="3"></textarea></label>
+            </div>
+          </div>
+
+          <div class="form-section billing-details-section">
+            <div class="form-section-heading">
+              <strong><i class="ti ti-cash" aria-hidden="true"></i>Billing &amp; Service Details</strong>
+              <span>Review the dispatch status, service fees and calculated shipment total.</span>
+            </div>
+            <div class="form-grid">
+              <label class="form-field"><span>Status</span>
+                <select name="current_status">
+                  <option value="pending">Pending</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="pending_warehouse_booking">Pending Warehouse Booking</option>
+                  <option value="out_for_delivery">Out Of Delivery</option>
+                  <option value="exception">Exception</option>
+                  <option value="completed" disabled>Completed</option>
+                  <option value="cancelled" disabled>Cancelled</option>
+                </select>
+              </label>
+              <label class="form-field" id="editStatusDateField" hidden><span>Status Date</span><input name="status_date" type="date" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Tail Lift Service Fee (AUD)</span><input name="tail_lift_service_fee" type="number" min="0" step="0.01" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Crane Required</span>
+                <select name="crane_required">
+                  <option value="negative">Negative</option>
+                  <option value="positive">Positive</option>
+                </select>
+              </label>
+              <label class="form-field" id="craneTruckFeeField" hidden><span>Crane Truck Fee (AUD) *</span><input name="crane_truck_fee" type="number" min="0.01" step="0.01" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Fuel Levy (AUD)</span><input name="fuel_levy_override" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Total Charge (AUD)</span><input name="total_charge_override" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
+            </div>
+            <div class="billing-formula" id="billingFormula" aria-live="polite"></div>
+          </div>
+
+          <div class="shipment-status-note" id="shipmentStatusNote"></div>
+        </div>
+
+        <footer class="modal-footer">
+          <button class="danger-outline-button" id="deleteShipmentButton" type="button" hidden>Delete Shipment</button>
+          <span class="modal-footer-spacer"></span>
+          <button class="secondary-button" id="dismissShipmentModalButton" type="button">Cancel</button>
+          <button class="primary-button submit-button" id="saveShipmentChangesButton" type="button">Save Changes</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop status-drawer-backdrop" id="statusDrawer" hidden>
+    <section class="status-drawer" role="dialog" aria-modal="true" aria-labelledby="statusDrawerTitle">
+      <header class="status-drawer-header">
+        <div>
+          <p class="eyebrow">DISPATCH STATUS</p>
+          <h2 id="statusDrawerTitle">Update Shipment Status</h2>
+          <p id="statusDrawerTracking">Select the next dispatch step.</p>
+        </div>
+        <button class="modal-close" id="closeStatusDrawerButton" type="button" aria-label="Close status panel"><i class="ti ti-x" aria-hidden="true"></i></button>
+      </header>
+
+      <form class="status-drawer-form" id="statusUpdateForm">
+        <div class="status-drawer-body">
+          <fieldset class="status-choice-list">
+            <legend>Choose a status</legend>
+            <label class="status-choice">
+              <input type="radio" name="dispatch_status" value="pending" checked>
+              <span class="status-choice-icon"><i class="ti ti-clock-hour-4" aria-hidden="true"></i></span>
+              <span><strong>Pending</strong><small>Return the shipment to the pending queue.</small></span>
+            </label>
+            <label class="status-choice">
+              <input type="radio" name="dispatch_status" value="out_for_delivery">
+              <span class="status-choice-icon"><i class="ti ti-truck-delivery" aria-hidden="true"></i></span>
+              <span><strong>Out Of Delivery</strong><small>The shipment has left the warehouse.</small></span>
+            </label>
+            <label class="status-choice">
+              <input type="radio" name="dispatch_status" value="scheduled">
+              <span class="status-choice-icon"><i class="ti ti-calendar-event" aria-hidden="true"></i></span>
+              <span><strong>Scheduled On</strong><small>Set the planned delivery date.</small></span>
+            </label>
+            <label class="status-choice">
+              <input type="radio" name="dispatch_status" value="on_hold">
+              <span class="status-choice-icon"><i class="ti ti-player-pause" aria-hidden="true"></i></span>
+              <span><strong>On Hold</strong><small>Pause the shipment from a selected start date.</small></span>
+            </label>
+            <label class="status-choice">
+              <input type="radio" name="dispatch_status" value="pending_warehouse_booking">
+              <span class="status-choice-icon"><i class="ti ti-building-warehouse" aria-hidden="true"></i></span>
+              <span><strong>Pending Warehouse Booking</strong><small>Await a warehouse delivery appointment. Total charge defaults to $150.</small></span>
+            </label>
+          </fieldset>
+
+          <div class="scheduled-date-section" id="scheduledDateSection" hidden>
+            <label id="scheduledDateLabel" for="scheduledDateText">Scheduled date *</label>
+            <div class="scheduled-date-input">
+              <input id="scheduledDateText" type="text" autocomplete="off" placeholder="e.g. 8.12 or 12 Aug 2026">
+              <button id="openScheduledCalendarButton" type="button" aria-label="Choose date from calendar" title="Choose date from calendar">
+                <svg class="icon-tabler icon-tabler-calendar-week" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M4 11h16"></path><path d="M7 14h.013"></path><path d="M10.01 14h.005"></path><path d="M13.01 14h.005"></path><path d="M16.015 14h.005"></path><path d="M13.015 17h.005"></path><path d="M7.01 17h.005"></path><path d="M10.01 17h.005"></path><path d="M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1"></path>
+                </svg>
+              </button>
+              <input class="native-date-picker" id="scheduledDatePicker" type="date" tabindex="-1" aria-hidden="true">
+            </div>
+            <p class="field-hint" id="scheduledDateHint">Short dates such as 8.12 are understood as 12 Aug 2026.</p>
+            <p class="field-error" id="scheduledDateError" hidden>Enter a valid date.</p>
+          </div>
+        </div>
+
+        <footer class="status-drawer-footer">
+          <button class="secondary-button" id="cancelStatusUpdateButton" type="button">Cancel</button>
+          <button class="primary-button" id="saveStatusUpdateButton" type="submit">Update Status</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="supabase-config.js?v=20260812-1"></script>
+  <script src="app.js?v=20260814-10"></script>
+</body>
+</html>

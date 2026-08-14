@@ -1,0 +1,64 @@
+Google Sheets 配送自动化安装说明
+================================
+
+脚本文件：google-sheets-delivery-automation.gs
+
+当前配置
+--------
+- 待派送工作表：Delivering Page
+- 已完成工作表：Delivered Page
+- J列：派送状态
+- K列：Delivering Page 为 ADT/ETA；Delivered Page 自动记录实际完成日期/时间
+- L列：入仓时间
+- Restore定位：相同入仓时间、相同柜号组的最后一行
+- Restore不再添加黄色临时高亮；恢复到Delivering Page后A到K保留橙色背景和黑色字体，方便快速定位
+- 初始化会同时从两个工作表移除旧版本遗留、带脚本专用标记的黄色Restore条件格式，不影响其他条件格式
+- 后续新移入Delivered Page的记录：A到K单元格橙色背景、黑色字体
+
+安装
+----
+1. 先给整个 Google Sheet 建立一份副本，用于测试和恢复。
+2. 在 Google Sheet 中打开：扩展程序 -> Apps Script。
+3. 删除编辑器中原有的示例代码。
+4. 打开本地文件 google-sheets-delivery-automation.gs，复制全部内容并粘贴。
+5. 点击“保存”。
+6. 在顶部函数下拉框中选择 setupDeliveryAutomation。
+7. 点击“运行”，按提示完成 Google 授权。
+8. 回到表格并刷新页面。顶部会出现“配送管理”菜单。
+
+先做安全测试
+------------
+1. 在 Delivering Page 新建一条测试数据，确保K列有ADT/ETA、L列有入仓时间。
+2. 先用当前或过去的ADT/ETA，在J列选择 Delivered。
+3. 确认整行进入 Delivered Page，J列为 Delivered，K列显示实际完成日期/时间，并且A到K变为橙色背景、黑色字体。
+4. 在 Delivered Page 的同一行J列选择 Restore。
+5. 确认该行回到 Delivering Page 中相同入仓时间、相同柜号分组的最后，不添加黄色临时高亮，并且A到K保持橙色背景、黑色字体。
+6. 确认恢复后的J列为空，K列恢复为移动前的原ADT/ETA。
+7. 再建立一条K列为未来日期的测试记录并选择 Delivered，确认该行不会移动、J列恢复为空且出现提醒。
+
+重要说明
+--------
+- 只需要由表格所有者运行一次 setupDeliveryAutomation。
+- 不要让多名员工分别安装同一个触发器，否则一次编辑可能重复执行。
+- 每次J列编辑都会扫描并处理当前所有 Delivered，避免连续操作时漏掉后续记录。
+- 如果仍有记录停留在 Delivering Page，可点击“配送管理 -> 处理所有已选择的 Delivered”作为兜底。
+- Restore只处理本次实际编辑的行，不会扫描并恢复其他行。
+- Restore前会检查“单号”；如果相同单号已存在于 Delivering Page，会阻止重复恢复并提醒。
+- 删除重复行后，下一次编辑Delivered Page的J列会先清除旧的重复提醒，再按当前数据重新检查；重新运行初始化也会清除全部旧提醒。
+- 如果Restore过程中报错，脚本会撤销刚生成的目标行，避免同一票同时留在两个页面。
+- 行数据复制时不会直接复制J列状态，避免把 Restore 写入只允许 Delivered 的下拉单元格；目标页状态由脚本单独设置。
+- 只有J列选择 Delivered 才会触发；脚本随后读取K列ADT/ETA作为实际完成时间。
+- K列为空、格式无法识别或属于未来时间时，脚本会取消本次Delivered选择并提醒，不会移动记录。
+- K列填写“已出仓”时也允许选择Delivered；记录会移动，Delivered Page的K列使用操作当天日期，Restore后K列恢复为“已出仓”。
+- 推荐将K列设置为Google Sheets真正的日期/时间；支持 2026-08-10、2026-08-10 14:30、10/08/2026，以及 8.4 / 8.04 / 8.10 这类“月.日”格式。
+- 为避免 Restore 丢失数据，移动时会在隐藏系统列中备份原ADT/ETA，恢复时原样放回。
+- 较早版本产生的已完成记录如果没有ADT/ETA备份，Restore时会使用Delivered Page的K列完成日期作为备用值，避免Delivering Page的K列为空。
+- 只有后续通过脚本新移入Delivered Page的记录才会被改成橙色；现有已完成记录不会批量处理或定时改色。
+- 新记录会先完成日期排序，再使用随数据移动的隐藏标记在最终位置改成橙色，避免排序后继承目标行原来的黄色或其他颜色。
+- Restore后的橙色是固定单元格颜色，不会在15分钟后自动消失；再次Delivered后仍按新记录规则在Delivered Page保持橙色。
+- 如果相同入仓时间下还没有相同柜号，则在该入仓时间组末尾建立新的柜号分组。
+- 已完成的现有记录请逐行在J列选择 Delivered，这也能用于逐项检查准确性。
+- Ctrl+Z 不能可靠撤销脚本移动；误操作请在 delivered page 选择 restore。
+- 如果Ctrl+Z造成同一单号同时存在于两个页面，再从Delivering Page选择Delivered时，脚本会更新Delivered Page已有的相同单号记录并删除待派送页副本，不会再新增第二行。
+- 网页或其他 API 写入不会触发 Google 的 onEdit；当前脚本处理员工在 Sheet 中的手动选择。
+- 如果将来改变工作表名称或J/K/L列用途，需要先修改脚本顶部 DELIVERY_CONFIG。
