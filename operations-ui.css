@@ -444,7 +444,8 @@
 
 .app-shell .map-button,
 .app-shell .primary-button,
-.shipment-modal .primary-button {
+.shipment-modal .primary-button,
+.confirmation-actions .primary-button {
   color: #fffaf6;
   border-color: var(--ui-accent);
   background: var(--ui-accent);
@@ -452,14 +453,16 @@
 
 .app-shell .map-button:hover:not(:disabled),
 .app-shell .primary-button:hover:not(:disabled),
-.shipment-modal .primary-button:hover:not(:disabled) {
+.shipment-modal .primary-button:hover:not(:disabled),
+.confirmation-actions .primary-button:hover:not(:disabled) {
   border-color: var(--ui-accent-hover);
   background: var(--ui-accent-hover);
 }
 
 .app-shell .map-button:disabled,
 .app-shell .primary-button:disabled,
-.shipment-modal .primary-button:disabled {
+.shipment-modal .primary-button:disabled,
+.confirmation-actions .primary-button:disabled {
   color: #8d989e;
   border-color: #d2d9dd;
   background: #e7ebed;
@@ -630,14 +633,14 @@
   table-layout: auto;
 }
 
-/* Keep each cargo label and its values on one shared column axis. */
+/* Keep shipment headers and values on one left-aligned column axis. */
 .app-shell .shipment-table th,
 .app-shell .shipment-table td {
-  text-align: center;
+  text-align: left;
 }
 
 .app-shell .shipment-table .row-actions {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .app-shell .pending-shipment-table {
@@ -645,7 +648,7 @@
 }
 
 .app-shell .completed-shipment-table {
-  min-width: 1540px;
+  min-width: 1580px;
 }
 
 .app-shell .status-badge,
@@ -1532,7 +1535,8 @@
     transition: grid-template-columns 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
-  .app-shell:has(.sidebar:hover),
+  .app-shell:has(.sidebar .nav-item:hover),
+  .app-shell:has(.sidebar.desktop-open),
   .app-shell:has(.sidebar :focus-visible) {
     grid-template-columns: 224px minmax(0, 1fr);
   }
@@ -1572,7 +1576,8 @@
     white-space: nowrap;
   }
 
-  .app-shell .sidebar:hover .brand-copy,
+  .app-shell .sidebar:has(.nav-item:hover) .brand-copy,
+  .app-shell .sidebar.desktop-open .brand-copy,
   .app-shell .sidebar:has(:focus-visible) .brand-copy {
     opacity: 1;
     transform: translateX(0);
@@ -1620,7 +1625,8 @@
     white-space: nowrap;
   }
 
-  .app-shell .sidebar:hover .nav-text,
+  .app-shell .sidebar:has(.nav-item:hover) .nav-text,
+  .app-shell .sidebar.desktop-open .nav-text,
   .app-shell .sidebar:has(:focus-visible) .nav-text {
     opacity: 1;
     transform: translateX(0);
@@ -1631,7 +1637,8 @@
     right: 2px;
   }
 
-  .app-shell .sidebar:hover .nav-count,
+  .app-shell .sidebar:has(.nav-item:hover) .nav-count,
+  .app-shell .sidebar.desktop-open .nav-count,
   .app-shell .sidebar:has(:focus-visible) .nav-count {
     position: static;
     justify-self: end;
@@ -1665,7 +1672,8 @@
     white-space: nowrap;
   }
 
-  .app-shell .sidebar:hover .user-copy,
+  .app-shell .sidebar:has(.nav-item:hover) .user-copy,
+  .app-shell .sidebar.desktop-open .user-copy,
   .app-shell .sidebar:has(:focus-visible) .user-copy {
     opacity: 1;
     transform: translateX(0);
@@ -1698,7 +1706,8 @@
     white-space: nowrap;
   }
 
-  .app-shell .sidebar:hover .logout-text,
+  .app-shell .sidebar:has(.nav-item:hover) .logout-text,
+  .app-shell .sidebar.desktop-open .logout-text,
   .app-shell .sidebar:has(:focus-visible) .logout-text {
     opacity: 1;
     transform: translateX(0);
@@ -2221,6 +2230,26 @@
   box-shadow: inset 2px 0 0 var(--ui-accent);
 }
 
+.app-shell .data-table tbody tr.details-open-row td {
+  background: #f1f5f9;
+}
+
+.app-shell .data-table tbody tr.details-open-row {
+  box-shadow: inset 2px 0 0 var(--ui-accent);
+}
+
+.app-shell .data-table tbody tr.exception-row td {
+  background: #fff3f5;
+}
+
+.app-shell .data-table tbody tr.exception-row:hover td {
+  background: #fdecef;
+}
+
+.app-shell .data-table tbody tr.exception-row:is(.selected-row, .details-open-row) td {
+  background: #f9e3e7;
+}
+
 .app-shell .check-cell input {
   accent-color: var(--ui-accent);
 }
@@ -2524,13 +2553,20 @@
 }
 
 .shipment-modal .modal-body {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   max-height: none;
   overflow-y: auto;
   padding: 0 20px;
   scrollbar-color: #c9cfcc #f5f7f6;
   scrollbar-width: thin;
 }
+
+#shipmentModal.billing-table-order .billing-details-section { order: 1; }
+#shipmentModal.billing-table-order .shipment-storage-section { order: 2; }
+#shipmentModal.billing-table-order .name-delivery-section { order: 3; }
+#shipmentModal.billing-table-order .status-notes-section { order: 4; }
 
 .shipment-modal .form-section {
   display: grid;
@@ -2757,14 +2793,40 @@
 }
 
 .app-shell .workspace-action-group {
-  display: flex;
+  display: grid;
   align-items: center;
-  gap: 7px;
   min-width: 0;
 }
 
 .app-shell .workspace-action-group[hidden] {
   display: none;
+}
+
+.app-shell .workspace-default-actions,
+.app-shell .shipment-bulk-actions {
+  grid-area: 1 / 1;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 0s;
+}
+
+.app-shell .workspace-action-group:not(.has-selection) .shipment-bulk-actions,
+.app-shell .workspace-action-group.has-selection .workspace-default-actions {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 0s, 180ms;
+}
+
+.app-shell .workspace-action-group:not(.has-selection) .shipment-bulk-actions {
+  transform: translateX(8px);
+}
+
+.app-shell .workspace-action-group.has-selection .workspace-default-actions {
+  transform: translateX(-8px);
 }
 
 .app-shell .workspace-bar .search-box {
@@ -2790,6 +2852,40 @@
   color: #155b42;
   border: 1px solid #a8dcc6;
   background: #dff5eb;
+}
+
+.app-shell .workspace-bar .map-button > .map-button-label {
+  display: inline;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.app-shell .workspace-bar .map-button > [hidden] { display: none; }
+.app-shell .workspace-bar .map-button:not(.selection-total) {
+  min-width: 148px;
+  padding-inline: 14px;
+}
+
+.app-shell .workspace-bar .map-button:not(.selection-total) > .map-button-label {
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.app-shell .workspace-bar .map-button:not(.selection-total) > i { font-size: 17px; }
+.app-shell .workspace-bar .map-button.selection-total {
+  min-width: 104px;
+  padding-inline: 14px;
+  pointer-events: none;
+}
+
+.app-shell .workspace-bar .map-button.selection-total > .map-button-label {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .app-shell .workspace-bar .map-button:hover:not(:disabled) {
@@ -2884,7 +2980,8 @@
   transition: width 160ms ease, box-shadow 160ms ease;
 }
 
-.app-shell .sidebar:hover,
+.app-shell .sidebar:has(.nav-item:hover),
+.app-shell .sidebar.desktop-open,
 .app-shell .sidebar:has(.nav-item:focus-visible),
 .app-shell .sidebar:has(.logout-button:focus-visible) {
   width: 208px;
@@ -2950,7 +3047,8 @@
   transition: opacity 100ms ease, transform 140ms ease;
 }
 
-.app-shell .sidebar:hover .nav-text,
+.app-shell .sidebar:has(.nav-item:hover) .nav-text,
+.app-shell .sidebar.desktop-open .nav-text,
 .app-shell .sidebar:has(.nav-item:focus-visible) .nav-text,
 .app-shell .sidebar:has(.logout-button:focus-visible) .nav-text {
   opacity: 1;
@@ -2967,7 +3065,8 @@
   background: #fafafa;
 }
 
-.app-shell .sidebar:hover .nav-count,
+.app-shell .sidebar:has(.nav-item:hover) .nav-count,
+.app-shell .sidebar.desktop-open .nav-count,
 .app-shell .sidebar:has(.nav-item:focus-visible) .nav-count,
 .app-shell .sidebar:has(.logout-button:focus-visible) .nav-count {
   opacity: 1;
@@ -3129,7 +3228,8 @@
   }
 
   .app-shell .sidebar,
-  .app-shell .sidebar:hover,
+  .app-shell .sidebar:has(.nav-item:hover),
+  .app-shell .sidebar.desktop-open,
   .app-shell .sidebar:has(.nav-item:focus-visible),
   .app-shell .sidebar:has(.logout-button:focus-visible) {
     position: fixed;
@@ -3165,10 +3265,58 @@
   }
 }
 
-/* Billing table (layout B): dense enough for desktop operations, with money
-   columns kept stable and readable while the existing horizontal scroll remains. */
-.app-shell .pending-shipment-table[data-table-mode="b"] {
-  min-width: 1740px;
+/* Shipment Intake: keep manual and spreadsheet intake visible together. */
+.app-shell .intake-split-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 8px;
+}
+
+.app-shell .intake-split-layout > .intake-panel {
+  min-width: 0;
+}
+
+.app-shell .intake-panel-heading {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.app-shell .intake-panel-heading strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2d3430;
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.app-shell .intake-panel-heading strong i {
+  color: var(--ui-accent);
+  font-size: 17px;
+}
+
+.app-shell .intake-panel-heading span {
+  color: #737c77;
+  font-size: 9px;
+}
+
+@media (max-width: 1600px) {
+  .app-shell .intake-split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Billing table (layout Y): fit the full billing summary within the workspace. */
+.app-shell .pending-shipment-table[data-table-mode="y"] {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.app-shell .pending-shipment-table .customer-cell {
+  min-width: 140px;
 }
 
 .app-shell .pending-shipment-table .weight-cell,
@@ -3229,7 +3377,7 @@
 .status-drawer-backdrop[hidden],
 .status-drawer .scheduled-date-section[hidden] { display: none !important; }
 
-.app-shell .pending-bulk-actions { display: flex; align-items: center; gap: 5px; padding-right: 7px; border-right: 1px solid #e1e4e2; }
+.app-shell .shipment-bulk-actions { gap: 5px; }
 .app-shell .bulk-action,
 .app-shell .table-mode-toggle { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; min-height: 32px; gap: 5px; padding: 0 9px; color: #3f4944; border: 1px solid #d7ddda; border-radius: 6px; background: #fefefe; font-size: 11px; font-weight: 620; white-space: nowrap; }
 .app-shell .bulk-action i { font-size: 15px; }
@@ -3241,8 +3389,7 @@
 .app-shell .bulk-action:disabled { opacity: .42; cursor: not-allowed; }
 .app-shell .table-mode-toggle { width: 32px; padding: 0; color: #4c5651; }
 
-.app-shell .pending-shipment-table[data-table-mode="a"] { min-width: 1640px; }
-.app-shell .pending-shipment-table[data-table-mode="b"] { min-width: 1390px; }
+.app-shell .pending-shipment-table[data-table-mode="x"] { min-width: 1640px; }
 .app-shell .pending-shipment-table tbody tr { cursor: default; user-select: none; }
 .app-shell .pending-shipment-table tbody td,
 .app-shell .pending-shipment-table tbody td strong {
@@ -3265,30 +3412,60 @@
 .app-shell .pending-shipment-table .date-cell { min-width: 145px; }
 .app-shell .pending-shipment-table .status-column-header,
 .app-shell .pending-shipment-table .status-cell {
-  min-width: 190px;
-  text-align: center;
+  width: 410px;
+  min-width: 410px;
+  max-width: 410px;
+  text-align: left;
+}
+
+.app-shell .pending-shipment-table[data-table-mode="y"] .status-column-header,
+.app-shell .pending-shipment-table[data-table-mode="y"] .status-cell {
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
 }
 
 .app-shell .status-action { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 32px; gap: 7px; padding: 0 10px; color: #8a6415; border: 1px solid #ead8a6; border-radius: 6px; background: #fff8e6; font-size: 11px; font-weight: 650; white-space: nowrap; }
 .app-shell .pending-shipment-table tbody td .status-action { font-size: 11px; font-weight: 650; }
+.app-shell .completed-shipment-table tbody tr { cursor: default; user-select: none; }
+.app-shell .completed-shipment-table tbody td,
+.app-shell .completed-shipment-table tbody td strong,
+.app-shell .completed-shipment-table tbody td small,
+.app-shell .completed-shipment-table .status-badge,
+.app-shell .completed-shipment-table .row-action {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.4;
+}
 .app-shell .status-action small { padding-left: 7px; color: #6e6b63; border-left: 1px solid currentColor; font-size: 9px; font-weight: 560; }
 .app-shell .status-action .scheduled-meta { display: inline-flex; align-items: center; gap: 6px; }
 .app-shell button.status-action:hover { color: #74510c; border-color: #d9bd73; background: #fff2cf; }
 .app-shell .status-action.scheduled { color: #315f82; border-color: #c8dbe9; background: #eef6fb; }
+.app-shell .status-action.message_sent { color: #315f82; border-color: #c8dbe9; background: #eef6fb; }
 .app-shell .status-action.on_hold { color: #6d577e; border-color: #d9cce2; background: #f7f2fa; }
 .app-shell .status-action.pending_warehouse_booking { color: #7a5414; border-color: #e4d1a7; background: #fbf6e9; }
 .app-shell .status-action.out_for_delivery { color: #155c41; border-color: #bfe1d2; background: #edf8f3; }
 .app-shell .status-action.exception { color: #93413d; border-color: #ecd0ce; background: #fcf1f0; }
 .app-shell .status-action.is-readonly { cursor: default; }
-.app-shell .schedule-alert-dot { position: absolute; top: -4px; left: -4px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 999px; background: #d83b35; box-shadow: 0 0 0 1px rgba(151,31,28,.1); }
+.app-shell .schedule-alert-dot { position: absolute; top: -4px; left: -4px; width: 8px; height: 8px; border: 2px solid #d83b35; border-radius: 999px; background: #d83b35; box-shadow: 0 0 0 1px rgba(151,31,28,.1); }
 .app-shell .status-stack {
   display: flex;
   width: 100%;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 7px;
 }
+.app-shell .status-cell-content { display: flex; align-items: flex-start; justify-content: flex-start; gap: 8px; }
+.app-shell .status-cell-content .status-stack { width: auto; min-width: 0; }
+.app-shell .status-quick-action { display: inline-flex; flex: 0 0 38px; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; color: #155c41; border: 1px solid #bfe1d2; border-radius: 6px; background: #edf8f3; font-size: 20px; cursor: pointer; }
+.app-shell .status-quick-action:hover { border-color: #83c6ac; background: #dff2e9; }
+.app-shell .status-quick-action.start_delivery { color: #315f82; border-color: #c8dbe9; background: #eef6fb; }
+.app-shell .status-quick-action.reset_pending { color: #6d577e; border-color: #d9cce2; background: #f7f2fa; }
+.app-shell .status-quick-action:disabled { cursor: wait; opacity: .55; }
+.app-shell .status-quick-action.sms-prepared:disabled { cursor: not-allowed; opacity: .28; }
 .app-shell .crane-required-badge { display: inline-flex; align-items: center; min-height: 38px; gap: 6px; padding: 0 10px; color: #9b4038; border: 1px solid #e7c4c0; border-radius: 6px; background: #fff2f0; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .app-shell .crane-required-badge i { font-size: 18px; }
 
@@ -3336,19 +3513,113 @@
 .status-drawer-footer .secondary-button { color: #4f5853; border: 1px solid #d8ddda; background: #fff; }
 .status-drawer-footer .primary-button { color: #104d38; border: 1px solid #a8d6c2; background: #def3ea; }
 
+/* Destructive action confirmation */
+.confirmation-backdrop[hidden] { display: none !important; }
+.confirmation-backdrop {
+  z-index: 140;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(28, 35, 31, 0.34);
+}
+.confirmation-dialog {
+  width: min(430px, 100%);
+  overflow: hidden;
+  color: #202522;
+  border: 1px solid #d8ddda;
+  border-radius: 8px;
+  background: #fefefe;
+  box-shadow: 0 16px 44px rgba(22, 36, 29, 0.16);
+  animation: confirmation-dialog-in 150ms cubic-bezier(.2,.75,.25,1);
+}
+.confirmation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 14px 12px 20px;
+  border-bottom: 1px solid #e1e5e3;
+}
+.confirmation-heading h2 { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.35; }
+.confirmation-close-button {
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: #969e99;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+.confirmation-close-button:hover { color: #4f5853; background: #f4f6f5; }
+.confirmation-close-button i { font-size: 17px; }
+.confirmation-body { padding: 22px 20px 24px; }
+.confirmation-body p { margin: 0; color: #505954; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.confirmation-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 18px 20px 20px;
+  border-top: 1px solid #e1e5e3;
+  background: #fefefe;
+}
+.confirmation-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.confirmation-actions .secondary-button { color: #303733; border: 1px solid #d8ddda; background: #fefefe; }
+.confirmation-actions .secondary-button:hover { color: #202522; border-color: #c7ceca; background: #f7f8f7; }
+#cancelConfirmationButton[hidden] + #confirmActionButton { grid-column: 1 / -1; }
+.confirmation-danger-button { color: #93413d; border: 1px solid #ecd0ce; background: #fcf1f0; }
+.confirmation-danger-button:hover { color: #7d312e; border-color: #dfb4b1; background: #f8e4e2; }
+.confirmation-dialog button:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(159, 69, 66, .2); }
+.confirmation-actions button:active { transform: translateY(1px); }
+@keyframes confirmation-dialog-in {
+  from { opacity: 0; transform: translateY(6px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 520px) {
+  .confirmation-backdrop { align-items: flex-end; padding: 10px; }
+  .confirmation-dialog { border-radius: 8px; }
+  .confirmation-heading { padding-left: 16px; }
+  .confirmation-body { padding-inline: 16px; }
+  .confirmation-actions { padding-inline: 16px; }
+  .confirmation-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirmation-dialog { animation: none; }
+  .app-shell .workspace-default-actions,
+  .app-shell .shipment-bulk-actions { transition: none; }
+}
+
 @media (max-width: 1680px) {
-  .app-shell .pending-bulk-actions .bulk-action span { display: none; }
-  .app-shell .pending-bulk-actions .bulk-action { width: 32px; padding: 0; }
+  .app-shell .shipment-bulk-actions .bulk-action span { display: none; }
+  .app-shell .shipment-bulk-actions .bulk-action { width: 32px; padding: 0; }
 }
 
 @media (max-width: 900px) {
   .app-shell .workspace-action-group { overflow-x: auto; padding-bottom: 2px; }
+  .app-shell .workspace-default-actions,
+  .app-shell .shipment-bulk-actions { justify-self: start; }
 }
 
 /* Desktop rail expands above the workspace instead of resizing it. */
 @media (min-width: 901px) {
   .app-shell,
-  .app-shell:has(.sidebar:hover),
+  .app-shell:has(.sidebar .nav-item:hover),
+  .app-shell:has(.sidebar.desktop-open),
   .app-shell:has(.sidebar :focus-visible),
   .app-shell:has(.nav-item:focus-visible),
   .app-shell:has(.logout-button:focus-visible) {
@@ -3359,6 +3630,51 @@
   .app-shell .sidebar {
     justify-self: start;
   }
+}
+
+/* Y layout: keep every data column left-aligned to reduce unused visual gaps. */
+.app-shell .pending-shipment-table[data-table-mode="y"] th,
+.app-shell .pending-shipment-table[data-table-mode="y"] td {
+  min-width: 0;
+  padding-right: 8px;
+  padding-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(1) { width: 40px; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(2) { width: 9%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(3) { width: 11%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(4) { width: 10%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(5) { width: 4%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(6) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(7) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(8) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(9) { width: 11%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(10) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(11) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(12) { width: 8%; }
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(13) { width: 8%; }
+
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4), :nth-child(9), :nth-child(13)) {
+  text-align: left;
+}
+
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):is(:nth-child(5), :nth-child(6), :nth-child(7), :nth-child(10), :nth-child(11), :nth-child(12)) {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):is(:nth-child(1), :nth-child(8)) {
+  text-align: left;
+}
+
+.app-shell .pending-shipment-table[data-table-mode="y"] .status-column-header,
+.app-shell .pending-shipment-table[data-table-mode="y"] .status-cell {
+  width: 7%;
+  min-width: 0;
+  max-width: none;
 }
 
 /* Unified 14px operations typography and proportionally larger controls/icons. */
@@ -3524,5 +3840,196 @@
 
   .app-shell .main-content {
     min-height: calc(100dvh - 112px);
+  }
+}
+
+/* A page typography is one step larger than the shared operations scale. */
+.app-shell #intakeView,
+.app-shell #intakeView :is(button, input, select, textarea) {
+  font-size: 15px;
+}
+
+.app-shell #intakeView :is(h1, h2, h3, h4, p, a, span, strong, small, label, th, td, legend, option) {
+  font-size: 15px;
+}
+
+.app-shell #intakeView .import-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 5px;
+  background: #f8faf9;
+}
+
+.app-shell #intakeView .import-summary {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.app-shell #intakeView .import-summary-row .submit-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.app-shell #intakeView .batch-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.app-shell #intakeView .batch-file-summary .batch-file-actions .secondary-button {
+  margin-left: 0;
+}
+
+.app-shell #intakeView .cancel-import-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #bfe1d2;
+  border-radius: 6px;
+  color: #155c41;
+  background: #edf8f3;
+  font-weight: 650;
+}
+
+.app-shell #intakeView .cancel-import-button:hover {
+  border-color: #8dcdb1;
+  background: #dff3ea;
+}
+
+.app-shell #intakeView .mapping-grid .form-field > span {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.app-shell #intakeView .mapping-grid .mapping-match-note {
+  color: #efc8c5;
+  font-size: inherit;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.app-shell #intakeView #batchCustomerSelect:invalid,
+.app-shell #intakeView .mapping-grid select.is-unmapped {
+  border-color: #efc8c5;
+  background: #fff7f6;
+  box-shadow: inset 0 0 0 1px rgba(169, 65, 58, 0.03);
+}
+
+.app-shell #intakeView #batchCustomerSelect:invalid:focus,
+.app-shell #intakeView .mapping-grid select.is-unmapped:focus {
+  border-color: #dca8a4;
+  box-shadow: 0 0 0 3px rgba(169, 65, 58, 0.08);
+}
+
+@media (max-width: 760px) {
+  .app-shell #intakeView .batch-file-summary,
+  .app-shell #intakeView .batch-file-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-shell #intakeView .batch-file-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+/* Match shipment drawer typography to the operations tables. */
+#shipmentModal .shipment-modal,
+#shipmentModal .shipment-modal :is(button, input, select, textarea, p, a, summary, span, strong, small, label, legend, option, code) {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#shipmentModal .shipment-modal .modal-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#shipmentModal .shipment-modal .fuel-levy-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#shipmentModal .shipment-modal .fuel-levy-formula {
+  margin-right: 16px;
+  color: #77817c;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#shipmentModal .shipment-modal #craneTruckFeeField input.crane-fee-flash {
+  animation: crane-fee-flash 2400ms ease-in-out;
+}
+
+@keyframes crane-fee-flash {
+  0%, 27%, 54%, 68% {
+    border-color: #d8ddda;
+    background: #fefefe;
+    box-shadow: 0 1px 1px rgba(26, 42, 34, 0.025);
+  }
+  13%, 40% {
+    border-color: #e0aaa6;
+    background: #fff0ef;
+    box-shadow: 0 0 0 3px rgba(169, 65, 58, 0.09);
+  }
+  82%, 100% {
+    border-color: #dca8a4;
+    background: #fefefe;
+    box-shadow: 0 0 0 1px rgba(169, 65, 58, 0.08), 0 0 8px rgba(169, 65, 58, 0.12);
+  }
+}
+
+#shipmentModal .shipment-modal #craneTruckFeeField input.crane-fee-border-lit {
+  border-color: #dca8a4;
+  background: #fefefe;
+  box-shadow: 0 0 0 1px rgba(169, 65, 58, 0.08), 0 0 8px rgba(169, 65, 58, 0.12);
+}
+
+#shipmentModal .shipment-modal .shipment-status-note.exception {
+  color: #874b52;
+  border-color: #edcfd4;
+  background: #fff3f5;
+}
+
+#shipmentModal .shipment-modal :is(#editExceptionReasonField, #editExceptionResolutionReasonField) {
+  gap: 7px;
+  padding: 12px 12px 12px 15px;
+  border: 1px solid #edcfd4;
+  border-left: 3px solid #cf969f;
+  border-radius: 7px;
+  background: #fff7f8;
+}
+
+#shipmentModal .shipment-modal :is(#editExceptionReasonField, #editExceptionResolutionReasonField) > span {
+  color: #874b52;
+  font-weight: 650;
+}
+
+#shipmentModal .shipment-modal :is(#editExceptionReasonField, #editExceptionResolutionReasonField) textarea {
+  border-color: #e3c7cc;
+  background: #fffdfd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #shipmentModal .shipment-modal #craneTruckFeeField input.crane-fee-flash {
+    animation: none;
   }
 }

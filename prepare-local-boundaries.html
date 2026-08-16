@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>生成墨尔本本地边界</title>
+  <style>
+    :root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#182230;background:#f5f7fb}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px}
+    main{width:min(760px,100%);background:#fff;border:1px solid #e4e7ec;border-radius:20px;padding:28px;box-shadow:0 18px 48px rgba(16,24,40,.12)}
+    h1{font-size:24px;margin:0 0 10px}
+    p{line-height:1.65;color:#475467}
+    .notice{background:#fff7e8;border:1px solid #fedf89;border-radius:12px;padding:12px 14px;color:#7a2e0e}
+    button{border:0;border-radius:10px;padding:12px 20px;background:#175cd3;color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+    button:disabled{background:#98a2b3;cursor:wait}
+    .progress{height:12px;background:#eaecf0;border-radius:999px;overflow:hidden;margin:22px 0 10px}
+    .progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,#175cd3,#53b1fd);transition:width .3s ease}
+    #status{min-height:54px;white-space:pre-line;color:#344054}
+    #log{margin-top:16px;max-height:260px;overflow:auto;background:#101828;color:#d0d5dd;border-radius:12px;padding:14px;font:12px/1.55 Consolas,monospace;white-space:pre-wrap}
+    .success{color:#067647!important;font-weight:700}
+    .error{color:#b42318!important;font-weight:700}
+  </style>
+</head>
+<body>
+<main>
+  <h1>生成墨尔本本地边界</h1>
+  <p>这个工具只运行一次：从 Vicmap 分批读取配送邮编和 suburb 精细边界，然后直接保存到网页的 <code>data</code> 文件夹。生成完成后，日常使用不再访问 Vicmap。</p>
+  <div class="notice">整个过程预计需要数分钟。为避免每分钟配额，几何请求之间会自动等待；请保持此页面和最小化的服务器窗口开启。</div>
+  <div class="progress"><span id="bar"></span></div>
+  <div id="status">准备就绪。</div>
+  <button id="start" type="button">开始生成本地边界</button>
+  <div id="log"></div>
+</main>
+<script>
+(function(){
+  'use strict';
+  const ADMIN_ROOT='https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/arcgis/rest/services/Vicmap_Admin/FeatureServer';
+  const ADDRESS_ROOT='https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/arcgis/rest/services/Vicmap_Address/FeatureServer';
+  const SPECIAL_ZONES={'ELTHAM':'Standard','ELTHAM NORTH':'Standard','RESEARCH':'Additional charge'};
+  const GEOMETRY_PAUSE_SECONDS=15;
+  const startButton=document.getElementById('start');
+  const status=document.getElementById('status');
+  const progressBar=document.getElementById('bar');
+  const logElement=document.getElementById('log');
+
+  function log(message){
+    const time=new Date().toLocaleTimeString();
+    logElement.textContent+=`[${time}] ${message}\n`;
+    logElement.scrollTop=logElement.scrollHeight;
+  }
+
+  function setProgress(percent,message){
+    progressBar.style.width=`${Math.max(0,Math.min(100,percent))}%`;
+    status.textContent=message;
+  }
+
+  function wait(milliseconds){
+    return new Promise(resolve=>setTimeout(resolve,milliseconds));
+  }
+
+  async function waitCountdown(seconds,message){
+    for(let remaining=seconds;remaining>0;remaining--){
+      status.textContent=`${message}（${remaining} 秒）`;
+      await wait(1000);
+    }
+  }
+
+  function normalise(value){
+    return String(value||'').toUpperCase().replace(/\s+/g,' ').trim();
+  }
+
+  function escapeSql(value){
+    return String(value).replaceAll("'","''");
+  }
+
+  async function loadConfiguration(){
+    const html=await fetch('index.html',{cache:'no-store'}).then(response=>{
+      if(!response.ok) throw new Error(`无法读取 index.html（${response.status}）`);
+      return response.text();
+    });
+    function legacyJson(name){
+      const match=html.match(new RegExp(`const\\s+${name}=([^;]+);`));
+      if(!match) throw new Error(`index.html 中缺少 ${name}`);
+      return JSON.parse(match[1]);
+    }
+    return {zoneByPostcode:legacyJson('zoneByPostcode'),postcodeBatches:legacyJson('postcodeBatches')};
+  }
+
+  async function fetchArcGis(root,layerId,parameters,format='geojson'){
+    const url=`${root}/${layerId}/query?${new URLSearchParams({...parameters,f:format})}`;
+    let lastError=null;
+    for(let attempt=1;attempt<=8;attempt++){
+      try{
+        const response=await fetch(url);
+        if(!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data=await response.json();
+        if(data.error){
+          const details=(data.error.details||[]).filter(Boolean).join('; ');
+          throw new Error(details||data.error.message||'Vicmap 返回错误');
+        }
+        return data;
+      }catch(error){
+        lastError=error;
+        const message=String(error.message||error);
+        const quota=/quota exceeded|request units|retry after/i.test(message);
+        const retryable=quota||/failed to fetch|network|temporar|busy|timeout|HTTP 429|HTTP 50[0234]/i.test(message);
+        if(!retryable||attempt===8) throw error;
+        const seconds=quota?65:Math.min(5*attempt,25);
+        log(`请求暂时失败：${message}；${seconds} 秒后重试。`);
+        await waitCountdown(seconds,'Vicmap 暂时限制请求，正在自动等待');
+      }
+    }
+    throw lastError;
+  }
+
+  function geometryParameters(where,outFields){
+    return {
+      where,
+      outFields,
+      returnGeometry:'true',
+      returnTrueCurves:'false',
+      outSR:'4326',
+      geometryPrecision:'6',
+      maxAllowableOffset:'0.000005',
+      resultRecordCount:'2000',
+      cacheHint:'true'
+    };
+  }
+
+  async function downloadPostcodes(postcodeBatches,zoneByPostcode){
+    const features=[];
+    for(let index=0;index<postcodeBatches.length;index++){
+      const batch=postcodeBatches[index];
+      setProgress(4+index*8,`正在读取配送邮编边界 ${index+1}/${postcodeBatches.length}…`);
+      const values=batch.map(postcode=>`'${postcode}'`).join(',');
+      const data=await fetchArcGis(ADMIN_ROOT,14,geometryParameters(`postcode IN (${values})`,'postcode'));
+      (data.features||[]).forEach(feature=>{
+        const postcode=String(feature.properties?.postcode||'');
+        feature.properties={postcode,zone:zoneByPostcode[postcode]||'Outside delivery area'};
+        features.push(feature);
+      });
+      log(`邮编批次 ${index+1} 完成，共 ${data.features?.length||0} 个边界。`);
+      if(index<postcodeBatches.length-1) await waitCountdown(GEOMETRY_PAUSE_SECONDS,'为避免 Vicmap 配额，等待下一批邮编边界');
+    }
+    return features;
+  }
+
+  async function downloadLocalityPostcodes(postcodeBatches){
+    const pairs=[];
+    for(let index=0;index<postcodeBatches.length;index++){
+      setProgress(38+index*2,`正在建立 suburb 与邮编的本地对应表 ${index+1}/${postcodeBatches.length}…`);
+      const values=postcodeBatches[index].map(postcode=>`'${postcode}'`).join(',');
+      let offset=0;
+      do{
+        const data=await fetchArcGis(ADDRESS_ROOT,0,{
+          where:`postcode IN (${values})`,
+          outFields:'postcode,locality_name',
+          returnGeometry:'false',
+          returnDistinctValues:'true',
+          orderByFields:'locality_name,postcode',
+          resultOffset:String(offset),
+          resultRecordCount:'2000'
+        },'json');
+        const page=(data.features||[]).map(feature=>feature.attributes||{});
+        pairs.push(...page);
+        offset+=page.length;
+        if(!data.exceededTransferLimit||!page.length) break;
+      }while(true);
+      log(`Suburb 对应表批次 ${index+1} 完成。`);
+    }
+    return pairs;
+  }
+
+  function buildLocalityZones(pairs,zoneByPostcode){
+    const zoneSets=new Map();
+    pairs.forEach(pair=>{
+      const name=normalise(pair.locality_name);
+      const zone=zoneByPostcode[String(pair.postcode||'')];
+      if(!name||!zone) return;
+      if(!zoneSets.has(name)) zoneSets.set(name,new Set());
+      zoneSets.get(name).add(zone);
+    });
+    const result=new Map();
+    zoneSets.forEach((zones,name)=>result.set(name,zones.size===1?[...zones][0]:'Mixed'));
+    Object.entries(SPECIAL_ZONES).forEach(([name,zone])=>result.set(name,zone));
+    return result;
+  }
+
+  async function downloadSuburbs(names,zoneByLocality){
+    const features=[];
+    const chunkSize=24;
+    const chunks=[];
+    for(let start=0;start<names.length;start+=chunkSize) chunks.push(names.slice(start,start+chunkSize));
+    for(let index=0;index<chunks.length;index++){
+      const percent=48+Math.round((index/Math.max(1,chunks.length))*43);
+      setProgress(percent,`正在读取 suburb 精细边界 ${index+1}/${chunks.length}…`);
+      const values=chunks[index].map(name=>`'${escapeSql(name)}'`).join(',');
+      const data=await fetchArcGis(ADMIN_ROOT,11,geometryParameters(`locality_name IN (${values})`,'locality_name'));
+      (data.features||[]).forEach(feature=>{
+        const name=normalise(feature.properties?.locality_name);
+        feature.properties={locality_name:name,zone:zoneByLocality.get(name)||'Outside delivery area'};
+        features.push(feature);
+      });
+      log(`Suburb 边界批次 ${index+1}/${chunks.length} 完成，共 ${data.features?.length||0} 个。`);
+      if(index<chunks.length-1) await waitCountdown(GEOMETRY_PAUSE_SECONDS,'为避免 Vicmap 配额，等待下一批 suburb 边界');
+    }
+    return features;
+  }
+
+  async function saveBoundaryFile(name,data){
+    const body=JSON.stringify(data);
+    const response=await fetch(`/save-boundary-file?name=${encodeURIComponent(name)}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body
+    });
+    if(!response.ok) throw new Error(`保存 ${name} 失败（${response.status}）`);
+    const result=await response.json();
+    log(`已保存 ${name}（${(result.bytes/1024/1024).toFixed(2)} MB）。`);
+  }
+
+  async function build(){
+    startButton.disabled=true;
+    status.className='';
+    logElement.textContent='';
+    try{
+      setProgress(1,'正在读取网页配送区域配置…');
+      const {zoneByPostcode,postcodeBatches}=await loadConfiguration();
+      const postcodeFeatures=await downloadPostcodes(postcodeBatches,zoneByPostcode);
+      const pairs=await downloadLocalityPostcodes(postcodeBatches);
+      const zones=buildLocalityZones(pairs,zoneByPostcode);
+      const names=[...new Set([...zones.keys(),...Object.keys(SPECIAL_ZONES)])].sort();
+      log(`需要保存 ${names.length} 个 suburb 边界。`);
+      const suburbFeatures=await downloadSuburbs(names,zones);
+
+      const byName=new Map(suburbFeatures.map(feature=>[normalise(feature.properties?.locality_name),feature]));
+      Object.entries(SPECIAL_ZONES).forEach(([name,zone])=>{
+        const source=byName.get(name);
+        if(!source) return;
+        const feature=JSON.parse(JSON.stringify(source));
+        feature.properties={postcode:'3095',suburb:name,zone,showLabel:name==='ELTHAM'};
+        postcodeFeatures.push(feature);
+      });
+
+      const metadata={generatedAt:new Date().toISOString(),source:'Vicmap Admin',geometryPrecision:6,maxAllowableOffset:0.000005};
+      const areas={type:'FeatureCollection',metadata,features:postcodeFeatures};
+      const suburbs={type:'FeatureCollection',metadata,features:suburbFeatures};
+      setProgress(94,'正在把边界保存到本地 data 文件夹…');
+      await saveBoundaryFile('delivery-areas.geojson',areas);
+      await saveBoundaryFile('suburb-boundaries.geojson',suburbs);
+      setProgress(100,'生成完成。现在可以关闭此页面，然后刷新 http://localhost:8080/。');
+      status.className='success';
+    }catch(error){
+      console.error(error);
+      status.textContent=`生成失败：${error.message||error}`;
+      status.className='error';
+      log(`失败：${error.stack||error}`);
+      startButton.disabled=false;
+      startButton.textContent='重新尝试';
+    }
+  }
+
+  startButton.addEventListener('click',build);
+})();
+</script>
+</body>
+</html>

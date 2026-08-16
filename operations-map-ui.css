@@ -1,0 +1,494 @@
+:root {
+  --map-ink: #172027;
+  --map-muted: #66727b;
+  --map-faint: #859198;
+  --map-line: #c9d1d6;
+  --map-line-strong: #aab5bc;
+  --map-surface: #ffffff;
+  --map-soft: #f1f4f5;
+  --map-rail: #1c292f;
+  --map-accent: #cf651f;
+  --map-accent-hover: #ab4e13;
+  --map-accent-soft: #fff0e5;
+  --map-focus: rgba(207, 101, 31, 0.25);
+}
+
+html,
+body,
+#map {
+  min-height: 100%;
+}
+
+body {
+  color: var(--map-ink);
+  background: #dce2e5;
+  font-family: "Segoe UI Variable Text", Aptos, "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button {
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--map-focus);
+  outline-offset: 2px;
+}
+
+.title {
+  top: 10px;
+  padding: 7px 11px;
+  border: 1px solid #3c4a51;
+  border-radius: 4px;
+  color: #f2f5f6;
+  background: rgba(28, 41, 47, 0.96);
+  box-shadow: 0 5px 14px rgba(21, 31, 36, 0.18);
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.status {
+  top: 46px;
+  padding: 6px 9px;
+  border: 1px solid var(--map-line);
+  border-radius: 4px;
+  color: #4e5a62;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 12px rgba(28, 41, 47, 0.12);
+  font-size: 9px;
+}
+
+.status.error {
+  color: #98423e;
+  border-color: #dfb5b2;
+  background: #fff4f3;
+}
+
+.search-panel {
+  top: 52px;
+  left: 14px;
+  width: min(350px, calc(100vw - 28px));
+  max-height: calc(100dvh - 66px);
+  overflow: hidden;
+  border: 1px solid #526067;
+  border-radius: 5px;
+  color: var(--map-ink);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 36px rgba(22, 34, 39, 0.2);
+  backdrop-filter: none;
+}
+
+.search-panel::before {
+  display: none;
+}
+
+.search-panel.collapsed .search-heading {
+  padding: 8px 9px;
+}
+
+.search-heading {
+  gap: 10px;
+  padding: 10px 10px;
+  border-bottom: 1px solid #3a484f;
+  background: var(--map-rail);
+}
+
+.search-title-wrap {
+  gap: 9px;
+}
+
+.search-icon {
+  flex-basis: 32px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #90522e;
+  border-radius: 4px;
+  color: #ffd2b3;
+  background: #49301f;
+  box-shadow: none;
+  font-size: 17px;
+}
+
+.search-heading strong {
+  color: #f4f7f8;
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.search-subtitle {
+  color: #95a3a9;
+  font-size: 8px;
+}
+
+.panel-toggle {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #4d5c63;
+  border-radius: 4px;
+  color: #c9d2d5;
+  background: #27353b;
+  box-shadow: none;
+  font-size: 14px;
+}
+
+.panel-toggle:hover {
+  color: #ffffff;
+  border-color: #69777d;
+  background: #344249;
+}
+
+.search-body {
+  max-height: calc(100dvh - 118px);
+  padding: 11px;
+  scrollbar-color: #aeb9bf transparent;
+  scrollbar-width: thin;
+}
+
+.search-help {
+  margin-bottom: 9px;
+  padding: 8px 8px 8px 29px;
+  border: 1px solid #e3c4ae;
+  border-radius: 4px;
+  color: #62442f;
+  background: var(--map-accent-soft);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.search-help::before {
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  color: #fff8f2;
+  background: var(--map-accent);
+  font-size: 8px;
+}
+
+.input-shell {
+  border: 1px solid var(--map-line-strong);
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.input-shell:focus-within {
+  border-color: var(--map-accent);
+  box-shadow: 0 0 0 3px var(--map-focus);
+}
+
+.input-label {
+  padding: 7px 9px 6px;
+  border-bottom: 1px solid #e2e7ea;
+  color: #46535a;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.input-count {
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #67320f;
+  background: #ffd8bc;
+  font: 700 8px/1 "Cascadia Mono", Consolas, monospace;
+}
+
+.search-input {
+  min-height: 126px;
+  max-height: 250px;
+  padding: 8px 9px;
+  color: #27323a;
+  font: 10px/1.55 "Cascadia Mono", Consolas, monospace;
+}
+
+.search-input::placeholder {
+  color: #7b878e;
+}
+
+.input-footer {
+  padding: 6px 8px;
+  border-top: 1px solid #e2e7ea;
+  color: #7a868d;
+  background: #f4f6f7;
+  font-size: 8px;
+}
+
+kbd {
+  border: 1px solid #c9d1d6;
+  border-radius: 3px;
+  color: #4e5b63;
+  background: #ffffff;
+  box-shadow: none;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 8px;
+}
+
+.search-actions {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.search-button {
+  min-height: 34px;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid var(--map-accent);
+  border-radius: 4px;
+  color: #fffaf6;
+  background: var(--map-accent);
+  box-shadow: none;
+  font-size: 9px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.search-button i {
+  font-size: 13px;
+}
+
+.search-button:hover:not(:disabled) {
+  border-color: var(--map-accent-hover);
+  background: var(--map-accent-hover);
+  box-shadow: none;
+  transform: none;
+}
+
+.search-button.secondary {
+  color: #46535a;
+  border-color: var(--map-line);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.search-button.secondary:hover:not(:disabled) {
+  color: #172027;
+  border-color: var(--map-line-strong);
+  background: #f1f4f5;
+  box-shadow: none;
+}
+
+.sheet-import-toggle,
+.boundary-toggle,
+.suburb-tag-toggle,
+.result-mark-toggle {
+  width: 100%;
+  margin-top: 7px;
+  color: #46535a !important;
+  border-color: var(--map-line) !important;
+  background: #f5f7f8 !important;
+  box-shadow: none !important;
+}
+
+.sheet-import-toggle.connected,
+.boundary-toggle.active,
+.suburb-tag-toggle.active,
+.result-mark-toggle.ready {
+  color: #6e350f !important;
+  border-color: #e5b28f !important;
+  background: var(--map-accent-soft) !important;
+  box-shadow: inset 3px 0 0 var(--map-accent) !important;
+}
+
+.search-results {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--map-line);
+  border-radius: 4px;
+  color: #58656d;
+  background: #f4f6f7;
+  font-size: 9px;
+}
+
+.result-summary-grid {
+  gap: 5px;
+}
+
+.result-metric {
+  padding: 6px 3px;
+  border: 1px solid #d5dce0;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.result-metric strong {
+  color: var(--map-accent);
+  font: 750 14px/1.1 "Cascadia Mono", Consolas, monospace;
+}
+
+.result-metric span {
+  color: #77838a;
+  font-size: 8px;
+}
+
+.search-progress {
+  height: 3px;
+  background: #e3c7b4;
+}
+
+.search-progress > span {
+  background: var(--map-accent);
+}
+
+.legend,
+.google-legend {
+  border: 1px solid var(--map-line);
+  border-radius: 4px;
+  color: #435159;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 12px rgba(24, 36, 41, 0.14);
+  font-size: 9px;
+}
+
+.status.api-key-setup {
+  border-color: #5c696f;
+  border-radius: 5px;
+  box-shadow: 0 18px 48px rgba(20, 31, 36, 0.22);
+}
+
+.api-key-setup strong {
+  color: var(--map-ink);
+}
+
+.api-key-setup p,
+.api-key-note {
+  color: var(--map-muted);
+}
+
+.api-key-row input {
+  border-color: var(--map-line-strong);
+  border-radius: 4px;
+}
+
+.api-key-row input:focus {
+  border-color: var(--map-accent);
+  box-shadow: 0 0 0 3px var(--map-focus);
+}
+
+.api-key-row button {
+  border-radius: 4px;
+  background: var(--map-accent);
+}
+
+/* Readability pass: map controls must remain legible during dispatch work. */
+.title {
+  font-size: 13px;
+}
+
+.status {
+  font-size: 11px;
+}
+
+.search-panel {
+  width: min(390px, calc(100vw - 28px));
+}
+
+.search-heading strong {
+  font-size: 14px;
+}
+
+.search-subtitle {
+  font-size: 10px;
+}
+
+.search-help,
+.input-label,
+.search-button,
+.search-results {
+  font-size: 11px;
+}
+
+.input-count,
+.input-footer,
+kbd,
+.result-metric span {
+  font-size: 10px;
+}
+
+.search-input {
+  font-size: 12px;
+}
+
+.search-button {
+  min-height: 39px;
+}
+
+@media (max-width: 640px) {
+  .title {
+    top: 8px;
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .status {
+    top: 43px;
+  }
+
+  .search-panel {
+    top: 47px;
+    left: 7px;
+    width: calc(100vw - 14px);
+    max-height: calc(100dvh - 54px);
+  }
+
+  .search-heading {
+    padding: 9px;
+  }
+
+  .search-body {
+    max-height: calc(100dvh - 99px);
+    padding: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Match the 14px typography scale used throughout the operations system. */
+body,
+button,
+input,
+select,
+textarea,
+.search-panel,
+.search-panel :is(p, span, strong, small, label, button, input, select, textarea) {
+  font-size: 14px;
+}
+
+body :is(.title, .status, .legend, .search-panel, .search-panel p, .search-panel span, .search-panel strong, .search-panel small, .search-panel label, .search-panel button, .search-panel input, .search-panel select, .search-panel textarea, .delivery-suburb-label, .postcode-label, .address-index) {
+  font-size: 14px !important;
+}
+
+.search-panel i[class^="ti"],
+.search-panel i[class*=" ti"],
+.panel-toggle i {
+  font-size: 19px;
+}
+
+.panel-toggle {
+  width: 36px;
+  height: 36px;
+}

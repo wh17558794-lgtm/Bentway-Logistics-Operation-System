@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>扩展至 650 个 Suburb</title>
+  <style>
+    :root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#182230;background:#f5f7fb}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px}
+    main{width:min(760px,100%);background:#fff;border:1px solid #e4e7ec;border-radius:20px;padding:28px;box-shadow:0 18px 48px rgba(16,24,40,.12)}
+    h1{font-size:24px;margin:0 0 10px}
+    p{line-height:1.65;color:#475467}
+    .notice{background:#eff8ff;border:1px solid #b2ddff;border-radius:12px;padding:12px 14px;color:#175cd3}
+    button{border:0;border-radius:10px;padding:12px 20px;background:#175cd3;color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+    button:disabled{background:#98a2b3;cursor:wait}
+    .progress{height:12px;background:#eaecf0;border-radius:999px;overflow:hidden;margin:22px 0 10px}
+    .progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,#175cd3,#53b1fd);transition:width .3s ease}
+    #status{min-height:54px;white-space:pre-line;color:#344054}
+    #log{margin-top:16px;max-height:260px;overflow:auto;background:#101828;color:#d0d5dd;border-radius:12px;padding:14px;font:12px/1.55 Consolas,monospace;white-space:pre-wrap}
+    .success{color:#067647!important;font-weight:700}
+    .error{color:#b42318!important;font-weight:700}
+  </style>
+</head>
+<body>
+<main>
+  <h1>把本地边界扩展至 650 个 Suburb</h1>
+  <p>保留当前全部 334 个区域，完整补充截图覆盖的 Melbourne、Geelong、Bacchus Marsh、Yarra Valley、Officer 和 Frankston 范围，再用距离 CBD 最近的区域补足至 650。全部区域保留完整边界，不再使用红色或橙色配送等级。</p>
+  <div class="notice">预计需要约 2–5 分钟。工具只下载新增边界，不会重新下载已有 334 个。</div>
+  <div class="progress"><span id="bar"></span></div>
+  <div id="status">准备就绪。</div>
+  <button id="start" type="button">开始扩展至 650 个</button>
+  <div id="log"></div>
+</main>
+<script>
+(function(){
+  'use strict';
+  const ADMIN_ROOT='https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/arcgis/rest/services/Vicmap_Admin/FeatureServer';
+  const TARGET_COUNT=650;
+  const CBD={lat:-37.8136,lng:144.9631};
+  const REQUIRED_VIEWPORT={west:144.15,east:145.75,north:-37.35,south:-38.30};
+  const GEOMETRY_PAUSE_SECONDS=15;
+  const startButton=document.getElementById('start');
+  const status=document.getElementById('status');
+  const progressBar=document.getElementById('bar');
+  const logElement=document.getElementById('log');
+
+  function log(message){
+    const time=new Date().toLocaleTimeString();
+    logElement.textContent+=`[${time}] ${message}\n`;
+    logElement.scrollTop=logElement.scrollHeight;
+  }
+
+  function setProgress(percent,message){
+    progressBar.style.width=`${Math.max(0,Math.min(100,percent))}%`;
+    status.textContent=message;
+  }
+
+  function wait(milliseconds){
+    return new Promise(resolve=>setTimeout(resolve,milliseconds));
+  }
+
+  async function waitCountdown(seconds,message){
+    for(let remaining=seconds;remaining>0;remaining--){
+      status.textContent=`${message}（${remaining} 秒）`;
+      await wait(1000);
+    }
+  }
+
+  function normalise(value){
+    return String(value||'').toUpperCase().replace(/\s+/g,' ').trim();
+  }
+
+  function escapeSql(value){
+    return String(value).replaceAll("'","''");
+  }
+
+  async function fetchArcGis(parameters,format='json'){
+    const url=`${ADMIN_ROOT}/11/query?${new URLSearchParams({...parameters,f:format})}`;
+    let lastError=null;
+    for(let attempt=1;attempt<=8;attempt++){
+      try{
+        const response=await fetch(url);
+        if(!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data=await response.json();
+        if(data.error){
+          const details=(data.error.details||[]).filter(Boolean).join('; ');
+          throw new Error(details||data.error.message||'Vicmap 返回错误');
+        }
+        return data;
+      }catch(error){
+        lastError=error;
+        const message=String(error.message||error);
+        const quota=/quota exceeded|request units|retry after/i.test(message);
+        const retryable=quota||/failed to fetch|network|temporar|busy|timeout|HTTP 429|HTTP 50[0234]/i.test(message);
+        if(!retryable||attempt===8) throw error;
+        const seconds=quota?65:Math.min(5*attempt,25);
+        log(`请求暂时失败：${message}；${seconds} 秒后重试。`);
+        await waitCountdown(seconds,'Vicmap 暂时限制请求，正在自动等待');
+      }
+    }
+    throw lastError;
+  }
+
+  function roughCenter(feature){
+    const centroid=feature.centroid;
+    if(Number.isFinite(centroid?.x)&&Number.isFinite(centroid?.y)) return {lng:centroid.x,lat:centroid.y};
+    const rings=feature.geometry?.rings||[];
+    const points=rings.flat();
+    if(!points.length) return null;
+    let minLng=Infinity,maxLng=-Infinity,minLat=Infinity,maxLat=-Infinity;
+    points.forEach(([lng,lat])=>{
+      minLng=Math.min(minLng,lng); maxLng=Math.max(maxLng,lng);
+      minLat=Math.min(minLat,lat); maxLat=Math.max(maxLat,lat);
+    });
+    return {lng:(minLng+maxLng)/2,lat:(minLat+maxLat)/2};
+  }
+
+  function distanceFromCbd(point){
+    const dx=(point.lng-CBD.lng)*Math.cos(CBD.lat*Math.PI/180);
+    const dy=point.lat-CBD.lat;
+    return dx*dx+dy*dy;
+  }
+
+  function isInsideRequiredViewport(point){
+    return point.lng>=REQUIRED_VIEWPORT.west&&point.lng<=REQUIRED_VIEWPORT.east&&
+      point.lat<=REQUIRED_VIEWPORT.north&&point.lat>=REQUIRED_VIEWPORT.south;
+  }
+
+  async function loadExisting(){
+    const response=await fetch(`data/suburb-boundaries.geojson?time=${Date.now()}`,{cache:'no-store'});
+    if(!response.ok) throw new Error('找不到现有 suburb-boundaries.geojson，请先完成 334 个边界生成。');
+    const data=await response.json();
+    if(data?.type!=='FeatureCollection'||!Array.isArray(data.features)) throw new Error('现有 suburb 边界文件格式不正确。');
+    return data;
+  }
+
+  async function loadVictoriaIndex(){
+    setProgress(7,'正在读取全维州 locality 索引…');
+    const idData=await fetchArcGis({where:'1=1',returnIdsOnly:'true',returnGeometry:'false'});
+    const ids=(idData.objectIds||[]).sort((a,b)=>a-b);
+    if(ids.length<TARGET_COUNT) throw new Error(`官方图层只返回 ${ids.length} 个区域，无法扩展至 ${TARGET_COUNT}。`);
+    log(`官方图层共有 ${ids.length} 个 locality。`);
+
+    const indexed=[];
+    // Keep objectIds URLs comfortably below ArcGIS gateway URL-length limits.
+    const chunkSize=120;
+    const chunks=[];
+    for(let start=0;start<ids.length;start+=chunkSize) chunks.push(ids.slice(start,start+chunkSize));
+    for(let index=0;index<chunks.length;index++){
+      setProgress(10+Math.round(index/chunks.length*28),`正在读取全维州位置索引 ${index+1}/${chunks.length}…`);
+      const common={
+        objectIds:chunks[index].join(','),
+        outFields:'locality_name',
+        returnGeometry:'false',
+        returnCentroid:'true',
+        outSR:'4326',
+        orderByFields:'OBJECTID'
+      };
+      let data=await fetchArcGis(common);
+      let usable=(data.features||[]).filter(feature=>roughCenter(feature));
+      if(!usable.length){
+        data=await fetchArcGis({
+          ...common,
+          returnGeometry:'true',
+          maxAllowableOffset:'0.01',
+          geometryPrecision:'4'
+        });
+        usable=(data.features||[]).filter(feature=>roughCenter(feature));
+      }
+      indexed.push(...usable.map(feature=>({
+        name:normalise(feature.attributes?.locality_name),
+        center:roughCenter(feature)
+      })).filter(item=>item.name&&item.center));
+      log(`位置索引 ${index+1}/${chunks.length} 完成，共取得 ${usable.length} 个。`);
+      if(index<chunks.length-1) await wait(2000);
+    }
+    return indexed;
+  }
+
+  async function downloadAdditional(existingNames,candidates,needed){
+    const added=[];
+    const addedNames=new Set();
+    const chunkSize=24;
+    let cursor=0;
+    let batch=0;
+    const estimatedBatches=Math.ceil(needed/chunkSize);
+    while(added.length<needed&&cursor<candidates.length){
+      const selected=candidates.slice(cursor,cursor+chunkSize);
+      cursor+=chunkSize;
+      batch++;
+      setProgress(42+Math.round(Math.min(1,added.length/needed)*48),`正在下载新增 suburb 边界 ${added.length}/${needed}…`);
+      const values=selected.map(item=>`'${escapeSql(item.name)}'`).join(',');
+      const data=await fetchArcGis({
+        where:`locality_name IN (${values})`,
+        outFields:'locality_name',
+        returnGeometry:'true',
+        returnTrueCurves:'false',
+        outSR:'4326',
+        geometryPrecision:'6',
+        maxAllowableOffset:'0.000005',
+        resultRecordCount:'2000',
+        cacheHint:'true'
+      },'geojson');
+      for(const feature of data.features||[]){
+        const name=normalise(feature.properties?.locality_name);
+        if(!name||existingNames.has(name)||addedNames.has(name)) continue;
+        feature.properties={locality_name:name,zone:'Outside delivery area'};
+        added.push(feature);
+        addedNames.add(name);
+        if(added.length===needed) break;
+      }
+      log(`新增边界批次 ${batch} 完成，当前 ${added.length}/${needed}。`);
+      if(added.length<needed&&cursor<candidates.length){
+        await waitCountdown(GEOMETRY_PAUSE_SECONDS,`为避免 Vicmap 配额，等待下一批（预计共 ${estimatedBatches} 批）`);
+      }
+    }
+    if(added.length<needed) throw new Error(`只取得 ${added.length} 个新增边界，未达到所需的 ${needed} 个。`);
+    return added;
+  }
+
+  async function save(data){
+    const body=JSON.stringify(data);
+    const response=await fetch('/save-boundary-file?name=suburb-boundaries.geojson',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body
+    });
+    if(!response.ok) throw new Error(`保存边界失败（${response.status}）`);
+    const result=await response.json();
+    log(`已保存 suburb-boundaries.geojson（${(result.bytes/1024/1024).toFixed(2)} MB）。`);
+  }
+
+  async function expand(){
+    startButton.disabled=true;
+    status.className='';
+    logElement.textContent='';
+    try{
+      setProgress(2,'正在读取现有本地 suburb 边界…');
+      const existing=await loadExisting();
+      const uniqueExisting=[];
+      const existingNames=new Set();
+      existing.features.forEach(feature=>{
+        const name=normalise(feature.properties?.locality_name);
+        if(!name||existingNames.has(name)) return;
+        feature.properties.locality_name=name;
+        existingNames.add(name);
+        uniqueExisting.push(feature);
+      });
+      log(`现有文件包含 ${uniqueExisting.length} 个唯一 suburb。`);
+      if(uniqueExisting.length>=TARGET_COUNT){
+        existing.features=uniqueExisting.slice(0,TARGET_COUNT);
+        await save(existing);
+        setProgress(100,`现有文件已经达到 ${TARGET_COUNT} 个，无需继续下载。`);
+        status.className='success';
+        return;
+      }
+
+      const index=await loadVictoriaIndex();
+      const candidateByName=new Map();
+      index.forEach(item=>{
+        if(existingNames.has(item.name)) return;
+        const current=candidateByName.get(item.name);
+        if(!current||distanceFromCbd(item.center)<distanceFromCbd(current.center)) candidateByName.set(item.name,item);
+      });
+      const needed=TARGET_COUNT-uniqueExisting.length;
+      const allCandidates=[...candidateByName.values()];
+      const required=allCandidates
+        .filter(item=>isInsideRequiredViewport(item.center))
+        .sort((a,b)=>distanceFromCbd(a.center)-distanceFromCbd(b.center)||a.name.localeCompare(b.name));
+      const optional=allCandidates
+        .filter(item=>!isInsideRequiredViewport(item.center))
+        .sort((a,b)=>distanceFromCbd(a.center)-distanceFromCbd(b.center)||a.name.localeCompare(b.name));
+      if(required.length>needed){
+        throw new Error(`截图范围还缺少 ${required.length} 个 suburb；加上现有区域会超过 ${TARGET_COUNT}。请扩大目标数量。`);
+      }
+      const candidates=[...required,...optional];
+      log(`截图范围内有 ${required.length} 个必须补充的 suburb；随后按距 CBD 的距离补足至 ${TARGET_COUNT}。`);
+      const additional=await downloadAdditional(existingNames,candidates,needed);
+      const output={
+        type:'FeatureCollection',
+        metadata:{
+          ...(existing.metadata||{}),
+          expandedAt:new Date().toISOString(),
+          targetCount:TARGET_COUNT,
+          expansionRule:'Existing suburbs, all localities in the required Melbourne viewport, then nearest missing localities to Melbourne CBD',
+          requiredViewport:REQUIRED_VIEWPORT,
+          additionalZone:'Outside delivery area'
+        },
+        features:[...uniqueExisting,...additional]
+      };
+      setProgress(94,'正在保存扩展后的本地边界…');
+      await save(output);
+      setProgress(100,`扩展完成：${output.features.length} 个唯一 suburb。现在可以关闭此页面并刷新地图。`);
+      status.className='success';
+    }catch(error){
+      console.error(error);
+      status.textContent=`扩展失败：${error.message||error}`;
+      status.className='error';
+      log(`失败：${error.stack||error}`);
+      startButton.disabled=false;
+      startButton.textContent='重新尝试';
+    }
+  }
+
+  startButton.addEventListener('click',expand);
+})();
+</script>
+</body>
+</html>

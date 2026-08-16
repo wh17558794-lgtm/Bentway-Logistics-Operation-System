@@ -45,6 +45,7 @@
   const legendElement=document.getElementById('legend');
 
   const selectedSuburbs=new Map();
+  const selectedPostcodes=new Set();
   const suburbFeatures=new Map();
   const suburbZoneByName=new Map();
   const postcodeSuburbs=new Map();
@@ -56,6 +57,7 @@
   const postcodeGroupColors={1:'#2563EB',2:'#16A34A',3:'#F59E0B',4:'#9333EA'};
 
   let map=null;
+  let viewportReady=false;
   let geocoder=null;
   let infoWindow=null;
   let AdvancedMarkerElement=null;
@@ -127,9 +129,23 @@
 
   window.addEventListener('message',event=>{
     if(event.source!==window.parent) return;
+    if(event.data?.type==='BENTWAY_MAP_VISIBLE'){
+      repairMapViewport();
+      return;
+    }
     if(event.data?.type!=='BENTWAY_SHOW_SHIPMENTS') return;
     importShipmentsFromSystem(event.data);
   });
+
+  function repairMapViewport(){
+    if(!map||viewportReady||!map.getDiv().offsetWidth||!map.getDiv().offsetHeight) return;
+    viewportReady=true;
+    google.maps.event.trigger(map,'resize');
+    requestAnimationFrame(()=>{
+      if(searchActive) fitSearchResults();
+      else if(defaultBounds&&!defaultBounds.isEmpty()) map.fitBounds(defaultBounds,35);
+    });
+  }
 
   function sheetImportConfig(){
     const raw=window.GOOGLE_SHEETS_IMPORT_CONFIG||{};
@@ -491,22 +507,25 @@
   }
 
   function defaultFeatureStyle(feature){
-    const color=postcodeGroupColors[Number(feature.getProperty('group'))];
-    const visible=boundariesVisible&&Boolean(color);
+    const postcode=String(feature.getProperty('postcode')||'');
+    const postcodeSelected=searchActive&&selectedPostcodes.has(postcode);
+    const color=postcodeSelected?'#A66B00':postcodeGroupColors[Number(feature.getProperty('group'))];
+    const visible=postcodeSelected||(boundariesVisible&&Boolean(color));
     return {
       clickable:visible,
       visible,
       strokeColor:color||'#475467',
       strokeOpacity:.9,
       strokeWeight:boundaryWeight(),
-      fillColor:color||'#FFFFFF',
-      fillOpacity:.3
+      fillColor:postcodeSelected?'#F2B134':color||'#FFFFFF',
+      fillOpacity:postcodeSelected?.32:.3
     };
   }
 
   function suburbFeatureStyle(feature){
     const name=normaliseText(feature.getProperty('locality_name'));
-    const selection=selectedSuburbs.get(name);
+    const storedSelection=selectedSuburbs.get(name);
+    const selection=storedSelection?.postcodeOnly?null:storedSelection;
     const marked=suburbHasMarkedResult(name);
     const showAll=!searchActive;
     return {
@@ -795,17 +814,38 @@
     let address=String(value||'')
       .replace(/[，；]/g,',')
       .replace(/[–—]/g,'-')
+      .replace(/\bIA\s+TROBE\b/ig,'La Trobe')
       .trim();
     address=address
+      .replace(/^(?:(?:UNIT|APT|APARTMENT|SHOP|SUITE|FLAT|LEVEL|LOT)\s+|U\s*)?[A-Z]*\d+[A-Z-]*\s*\/\s*(?=\d)/i,'')
       .replace(/^(?:UNIT|APT|APARTMENT|SHOP|SUITE|FLAT)\s+[A-Z0-9-]+(?:\s*\([^)]*\))?\s*,?\s*/i,'')
       .replace(/^U\s*[A-Z0-9-]+\s*,?\s*/i,'')
-      .replace(/^[A-Z]*\d+[A-Z-]*\s*\/\s*(?=\d)/i,'')
       .replace(/^LEVEL\s+[A-Z0-9-]+\s*,?\s*/i,'')
       .replace(/^(?:LOT\s+[A-Z0-9-]+\s*,?\s*)+/i,'')
       .replace(/\s+/g,' ')
       .trim();
     return address;
   }
+  console.assert(cleanAddress('U1/163 La Trobe St, Melbourne VIC 3000')==='163 La Trobe St, Melbourne VIC 3000','cleanAddress slash-unit regression');
+  console.assert(cleanAddress('U1/163 Ia Trobe St, Melbourne VIC 3000')==='163 La Trobe St, Melbourne VIC 3000','cleanAddress La Trobe spelling regression');
+
+  function matchesRequestedPostcode(input,resultPostcode){
+    const requested=String(input||'').match(/\b3\d{3}\b/)?.[0];
+    return !requested||String(resultPostcode||'')===requested;
+  }
+  console.assert(!matchesRequestedPostcode('163 La Trobe St, Melbourne VIC 3000','3205'),'geocode postcode regression');
+
+  const addressOverrides=new Map([
+    ['163 LA TROBE ST MELBOURNE VIC 3000',{address:'163 La Trobe Street, Melbourne VIC 3000',locality:'MELBOURNE',postcode:'3000',coordinates:[144.9670359,-37.8088827]}]
+  ]);
+
+  function addressOverride(value){
+    const key=normaliseText(cleanAddress(value)).replace(/\bSTREET\b/g,'ST').replace(/\s+AUSTRALIA$/,'');
+    const override=addressOverrides.get(key);
+    if(!override) return null;
+    return {feature:{type:'Feature',properties:{ezi_address:override.address,locality_name:override.locality,postcode:override.postcode},geometry:{type:'Point',coordinates:[...override.coordinates]}},ambiguous:false};
+  }
+  console.assert(addressOverride('U1/163 La Trobe St, Melbourne VIC 3000')?.feature.geometry.coordinates[0]===144.9670359,'address override regression');
 
   function isAddressInput(value){
     const query=normaliseText(value);
@@ -833,21 +873,27 @@
   async function geocodeAddress(input){
     const cleaned=cleanAddress(input);
     const key=normaliseText(cleaned);
+    const requestedPostcode=cleaned.match(/\b3\d{3}\b/)?.[0]||'';
     if(sessionGeocodeCache.has(key)) return sessionGeocodeCache.get(key);
+    const override=addressOverride(cleaned);
+    if(override){
+      sessionGeocodeCache.set(key,override);
+      return override;
+    }
     const requestAddress=/\b(?:VIC|VICTORIA|AUSTRALIA)\b/i.test(cleaned)
       ?cleaned
       :`${cleaned}, Victoria, Australia`;
     const response=await geocoder.geocode({
       address:requestAddress,
-      componentRestrictions:{country:'AU'},
+      componentRestrictions:{country:'AU',...(requestedPostcode?{postalCode:requestedPostcode}:{})},
       region:'au'
     });
     const candidates=(response.results||[]).filter(result=>{
       const postcode=addressComponent(result,'postal_code');
       const state=addressComponent(result,'administrative_area_level_1');
-      return (!postcode||/^3\d{3}$/.test(postcode))&&(!state||/Victoria|VIC/i.test(state));
+      return (!postcode||/^3\d{3}$/.test(postcode))&&matchesRequestedPostcode(cleaned,postcode)&&(!state||/Victoria|VIC/i.test(state));
     });
-    const result=candidates[0]||response.results?.[0];
+    const result=candidates[0]||(!requestedPostcode?response.results?.[0]:null);
     if(!result) return null;
     const postcode=addressComponent(result,'postal_code');
     const locality=addressComponent(result,'locality')||
@@ -905,18 +951,38 @@
     return matches;
   }
 
-  function mergeSuburbSelection(name,zone,lineNumber){
+  function usesPostcodeBoundary(deliveryPostcodes,postcode){
+    const postcodes=new Set(deliveryPostcodes.map(String).filter(Boolean));
+    return Boolean(postcode&&postcodes.size>1&&postcodes.has(String(postcode)));
+  }
+  console.assert(usesPostcodeBoundary(['3000','3004'],'3000'),'multi-postcode boundary regression');
+
+  function mergeSuburbSelection(name,zone,lineNumber,postcode=''){
+    const deliveryPostcodes=(suburbFeatures.get(name)||[]).flatMap(feature=>{
+      const values=feature.getProperty('delivery_postcodes');
+      return Array.isArray(values)?values:[values];
+    });
+    const postcodeOnly=usesPostcodeBoundary(deliveryPostcodes,postcode);
     const existing=selectedSuburbs.get(name);
     if(!existing){
-      selectedSuburbs.set(name,{zone,lineNumbers:[lineNumber]});
+      selectedSuburbs.set(name,{zone,lineNumbers:[lineNumber],postcodeOnly,postcodes:new Set(postcodeOnly?[String(postcode)]:[])});
       return;
     }
     existing.lineNumbers.push(lineNumber);
+    existing.postcodeOnly=existing.postcodeOnly&&postcodeOnly;
+    if(postcodeOnly) existing.postcodes.add(String(postcode));
     if(existing.zone!==zone&&zone!=='Outside delivery area'&&existing.zone!=='Outside delivery area'){
       existing.zone='Mixed';
     }else if(existing.zone==='Outside delivery area'&&zone!=='Outside delivery area'){
       existing.zone=zone;
     }
+  }
+
+  function syncSelectedPostcodes(){
+    selectedPostcodes.clear();
+    selectedSuburbs.forEach(selection=>{
+      if(selection.postcodeOnly) selection.postcodes.forEach(postcode=>selectedPostcodes.add(postcode));
+    });
   }
 
   function markerIcon(){
@@ -1401,7 +1467,7 @@
   function showSearchMode(){
     searchActive=true;
     boundariesVisible=false;
-    defaultData?.setMap(null);
+    defaultData?.setMap(selectedPostcodes.size?map:null);
     defaultData?.setStyle(defaultFeatureStyle);
     suburbData?.setMap(map);
     suburbData?.setStyle(suburbFeatureStyle);
@@ -1413,7 +1479,8 @@
   function fitSearchResults(){
     const bounds=new google.maps.LatLngBounds();
     addressMarkers.forEach(item=>bounds.extend(item.kind==='advanced'?item.position:item.getPosition()));
-    selectedSuburbs.forEach((_,name)=>{
+    selectedSuburbs.forEach((selection,name)=>{
+      if(selection.postcodeOnly) return;
       (suburbFeatures.get(name)||[]).forEach(feature=>geometryBounds(feature.getGeometry(),bounds));
     });
     if(bounds.isEmpty()) return;
@@ -1428,6 +1495,7 @@
 
   function resetSearch(clearInput=true){
     selectedSuburbs.clear();
+    selectedPostcodes.clear();
     clearAddressMarkers();
     setSuburbTagsVisible(true);
     searchActive=false;
@@ -1471,6 +1539,7 @@
 
     try{
       selectedSuburbs.clear();
+      selectedPostcodes.clear();
       clearAddressMarkers();
       const addressItems=lines.map((input,index)=>({input,index})).filter(item=>isAddressInput(item.input)&&!isPostcodeInput(item.input));
       const requestedDirectSuburbNames=lines.filter(input=>!isAddressInput(input)&&!isPostcodeInput(input)).map(normaliseSuburbInput);
@@ -1508,7 +1577,7 @@
             zone=props.postcode==='3095'
               ?localityZones[suburbName]||zoneByPostcode[props.postcode]||'Outside delivery area'
               :zoneByPostcode[props.postcode]||'Outside delivery area';
-            mergeSuburbSelection(suburbName,zone,lineNumber);
+            mergeSuburbSelection(suburbName,zone,lineNumber,props.postcode);
           }
           return {
             ok:true,
@@ -1529,6 +1598,7 @@
         return {ok:true,type:'suburb',input,lineNumber,suburbName,zone};
       },updateSearchProgress);
 
+      syncSelectedPostcodes();
       showSearchMode();
       results.filter(result=>result?.ok&&result.type==='address').forEach(addAddressMarker);
       const suburbResults=results.flatMap(result=>{
