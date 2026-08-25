@@ -34,6 +34,216 @@
   font-family: "Segoe UI Variable Text", Aptos, "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
 }
 
+/* SQL36: admin Billing Profiles and server-backed Storage schedule */
+.billing-profiles-view {
+  padding: 10px;
+}
+
+.billing-profiles-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 10px;
+  min-height: calc(100dvh - var(--workspace-bar-height, 48px) - 20px);
+}
+
+.billing-profile-list-panel,
+.billing-profile-editor {
+  min-height: 0;
+  margin: 0;
+}
+
+.billing-profile-list-panel {
+  padding: 18px 12px;
+}
+
+.billing-profile-list-panel header {
+  padding: 0 6px 14px;
+}
+
+.billing-profile-list-panel h2,
+.billing-profile-editor h2 {
+  margin: 3px 0 5px;
+  font-size: 18px;
+}
+
+.billing-profile-list-panel header p:last-child,
+.billing-profile-editor-header p:last-child {
+  margin: 0;
+  color: var(--text-muted, #6b7280);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.billing-profile-list {
+  display: grid;
+  gap: 4px;
+}
+
+.billing-profile-list button {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  padding: 10px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.billing-profile-list button:hover,
+.billing-profile-list button:focus-visible {
+  border-color: #cbd5df;
+  background: #f7f9fb;
+  outline: none;
+}
+
+.billing-profile-list button.active {
+  border-color: #bdd3e5;
+  background: #edf5fb;
+}
+
+.billing-profile-list button strong,
+.billing-profile-list button small {
+  display: block;
+}
+
+.billing-profile-list button small {
+  margin-top: 2px;
+  color: var(--text-muted, #6b7280);
+}
+
+.billing-profile-editor {
+  padding: 0;
+  overflow: hidden;
+}
+
+.billing-profile-editor-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e9ed;
+  background: #fff;
+}
+
+.billing-profile-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding: 20px;
+  overflow: auto;
+}
+
+.billing-profile-sections section + section {
+  border-left: 1px solid #e8ebee;
+  padding-left: 24px;
+}
+
+.billing-profile-sections h3 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #26343e;
+}
+
+.storage-episode {
+  padding: 10px 0;
+  border-top: 1px solid #e7eaed;
+}
+
+.storage-episode:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.storage-episode-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 12px;
+  margin-bottom: 8px;
+}
+
+.storage-episode-summary small {
+  color: var(--text-muted, #6b7280);
+}
+
+.storage-week-list,
+.storage-history-list {
+  display: grid;
+  gap: 3px;
+}
+
+.storage-week-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.storage-week-row.billed,
+.storage-week-row.covered {
+  color: #8a939b;
+  background: #f7f8f9;
+}
+
+.storage-history-heading {
+  margin: 10px 0 5px;
+  color: #68737c;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.storage-credit-warning {
+  margin: 8px 0;
+  border-left: 3px solid #b86a24;
+  background: #fff8ef;
+  padding: 8px 10px;
+  color: #7a4619;
+  font-size: 12px;
+}
+
+.storage-show-all {
+  margin-top: 7px;
+  border: 0;
+  background: transparent;
+  color: #426b8a;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.billing-mode-note {
+  display: block;
+  margin-top: 2px;
+  color: #68737c;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+@media (max-width: 1000px) {
+  .billing-profiles-layout,
+  .billing-profile-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-profile-sections section + section {
+    border-left: 0;
+    border-top: 1px solid #e8ebee;
+    padding: 20px 0 0;
+  }
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
@@ -1941,6 +2151,65 @@
   }
 }
 
+/* Shipment details secondary navigation and billing records. */
+.shipment-details-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 18px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid #e1e5e3;
+  background: #fff;
+}
+.shipment-details-tabs button {
+  min-height: 38px;
+  padding: 0 12px;
+  color: #65706a;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  white-space: nowrap;
+}
+.shipment-details-tabs button.active { color: #155c41; border-bottom-color: #3b8d6b; }
+.shipment-details-tabs button:focus-visible { outline: 2px solid #73a98f; outline-offset: -2px; }
+.operations-inline-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.storage-fees-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e1e5e3; }
+.storage-fees-section h3 { margin: 0 0 10px; color: #39413d; font-size: 14px; }
+.storage-fee-list { display: grid; gap: 6px; }
+.storage-fee-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 9px 10px; border-radius: 5px; background: #f6f8f7; }
+.storage-fee-row.billed { color: #8a938e; background: #f2f3f2; }
+.storage-fee-row small { color: inherit; }
+.shipment-activity-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.shipment-activity-list li { padding: 11px 12px; border-left: 3px solid #b9d8ca; background: #f7faf8; }
+.shipment-activity-list li > div { display: flex; justify-content: space-between; gap: 12px; text-transform: capitalize; }
+.shipment-activity-list p { margin: 5px 0; color: #56615b; }
+.shipment-activity-list small, .empty-inline { color: #7b8580; }
+.inline-money-control { display: flex; gap: 6px; }
+.inline-money-control input { flex: 1; min-width: 0; }
+.inline-money-control button { width: 42px; padding: 0; border: 1px solid #d5dbd8; border-radius: 5px; color: #276c51; background: #f3f9f6; }
+.storage-badge { display: inline-flex; margin-top: 4px; padding: 2px 6px; border-radius: 999px; color: #456b5a; background: #e7f2ed; font-size: 11px !important; }
+.toast { max-width: min(720px, calc(100vw - 32px)); white-space: pre-line; }
+.billing-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #e0e5e2;
+  border-radius: 7px;
+  background: #fff;
+}
+.billing-filter-bar :is(input, select) { min-width: 0; height: 38px; padding: 0 10px; border: 1px solid #d6dcda; border-radius: 5px; background: #fff; }
+.draft-bill-panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid #bcdcca; border-radius: 7px; background: #edf8f3; }
+.draft-bill-panel > div:first-child { display: grid; gap: 3px; }
+.draft-bill-items { display: grid; gap: 3px; max-height: 150px; margin: 6px 0 0; padding: 0; overflow-y: auto; list-style: none; }
+.draft-bill-items li { display: flex; justify-content: space-between; gap: 18px; color: #526059; font-size: 12px; }
+.billing-table { min-width: 980px; }
+.billing-table .billing-group-row td { padding-top: 14px; padding-bottom: 8px; border-top: 1px solid #d9e1dd; background: #f4f8f6; }
+.billing-table .billing-group-row strong { display: block; }
+.billing-table .billing-group-row small { display: block; margin-top: 3px; color: #707b75; }
+.billing-table tr.billed td { color: #929a96; background: #f5f6f5; }
+@media (max-width: 900px) { .billing-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /*
   Supabase Studio-inspired workbench.
   BentWay keeps its own identity: off-white surfaces, charcoal type and a
@@ -2563,10 +2832,6 @@
   scrollbar-width: thin;
 }
 
-#shipmentModal.billing-table-order .billing-details-section { order: 1; }
-#shipmentModal.billing-table-order .shipment-storage-section { order: 2; }
-#shipmentModal.billing-table-order .name-delivery-section { order: 3; }
-#shipmentModal.billing-table-order .status-notes-section { order: 4; }
 
 .shipment-modal .form-section {
   display: grid;
@@ -3308,8 +3573,8 @@
   }
 }
 
-/* Billing table (layout Y): fit the full billing summary within the workspace. */
-.app-shell .pending-shipment-table[data-table-mode="y"] {
+/* Billing View: fit the full billing summary within the workspace. */
+.app-shell .pending-shipment-table[data-table-mode="bv"] {
   width: 100%;
   min-width: 0;
   table-layout: fixed;
@@ -3389,7 +3654,7 @@
 .app-shell .bulk-action:disabled { opacity: .42; cursor: not-allowed; }
 .app-shell .table-mode-toggle { width: 32px; padding: 0; color: #4c5651; }
 
-.app-shell .pending-shipment-table[data-table-mode="x"] { min-width: 1640px; }
+.app-shell .pending-shipment-table[data-table-mode="ov"] { min-width: 1640px; }
 .app-shell .pending-shipment-table tbody tr { cursor: default; user-select: none; }
 .app-shell .pending-shipment-table tbody td,
 .app-shell .pending-shipment-table tbody td strong {
@@ -3418,8 +3683,8 @@
   text-align: left;
 }
 
-.app-shell .pending-shipment-table[data-table-mode="y"] .status-column-header,
-.app-shell .pending-shipment-table[data-table-mode="y"] .status-cell {
+.app-shell .pending-shipment-table[data-table-mode="bv"] .status-column-header,
+.app-shell .pending-shipment-table[data-table-mode="bv"] .status-cell {
   width: 160px;
   min-width: 160px;
   max-width: 160px;
@@ -3632,9 +3897,9 @@
   }
 }
 
-/* Y layout: keep every data column left-aligned to reduce unused visual gaps. */
-.app-shell .pending-shipment-table[data-table-mode="y"] th,
-.app-shell .pending-shipment-table[data-table-mode="y"] td {
+/* Billing View: keep every data column left-aligned to reduce unused visual gaps. */
+.app-shell .pending-shipment-table[data-table-mode="bv"] th,
+.app-shell .pending-shipment-table[data-table-mode="bv"] td {
   min-width: 0;
   padding-right: 8px;
   padding-left: 8px;
@@ -3643,35 +3908,35 @@
   white-space: nowrap;
 }
 
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(1) { width: 40px; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(2) { width: 9%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(3) { width: 11%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(4) { width: 10%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(5) { width: 4%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(6) { width: 7%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(7) { width: 7%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(8) { width: 7%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(9) { width: 11%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(10) { width: 7%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(11) { width: 7%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(12) { width: 8%; }
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):nth-child(13) { width: 8%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(1) { width: 40px; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(2) { width: 9%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(3) { width: 11%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(4) { width: 10%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(5) { width: 4%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(6) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(7) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(8) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(9) { width: 11%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(10) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(11) { width: 7%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(12) { width: 8%; }
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):nth-child(13) { width: 8%; }
 
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4), :nth-child(9), :nth-child(13)) {
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4), :nth-child(9), :nth-child(13)) {
   text-align: left;
 }
 
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):is(:nth-child(5), :nth-child(6), :nth-child(7), :nth-child(10), :nth-child(11), :nth-child(12)) {
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):is(:nth-child(5), :nth-child(6), :nth-child(7), :nth-child(10), :nth-child(11), :nth-child(12)) {
   text-align: left;
   font-variant-numeric: tabular-nums;
 }
 
-.app-shell .pending-shipment-table[data-table-mode="y"] :is(th, td):is(:nth-child(1), :nth-child(8)) {
+.app-shell .pending-shipment-table[data-table-mode="bv"] :is(th, td):is(:nth-child(1), :nth-child(8)) {
   text-align: left;
 }
 
-.app-shell .pending-shipment-table[data-table-mode="y"] .status-column-header,
-.app-shell .pending-shipment-table[data-table-mode="y"] .status-cell {
+.app-shell .pending-shipment-table[data-table-mode="bv"] .status-column-header,
+.app-shell .pending-shipment-table[data-table-mode="bv"] .status-cell {
   width: 7%;
   min-width: 0;
   max-width: none;
@@ -4032,4 +4297,107 @@
   #shipmentModal .shipment-modal #craneTruckFeeField input.crane-fee-flash {
     animation: none;
   }
+}
+
+/* Local pre-deployment revision: continuous sidebar hover, two-column details and billing editor. */
+@media (min-width: 901px) {
+  .app-shell .sidebar:hover { width: 208px; box-shadow: 14px 0 30px rgba(35,35,35,.08); }
+  .app-shell .sidebar:hover :is(.brand-copy, .nav-text, .user-copy, .logout-text) { opacity: 1; transform: translateX(0); }
+  .app-shell .sidebar:hover .nav-count { opacity: 1; }
+}
+
+#shipmentModal .shipment-modal { width: min(1120px, 58vw); }
+#shipmentModal .shipment-modal .modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+#shipmentModal .shipment-details-column {
+  min-height: 0;
+  padding: 0 20px;
+  overflow-y: auto;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+#shipmentModal .shipment-details-column:first-child { border-right: 1px solid #e4e8e6; }
+#shipmentModal .shipment-details-column:hover { scrollbar-color: #bdc6c1 transparent; }
+#shipmentModal .shipment-details-column::-webkit-scrollbar { width: 4px; }
+#shipmentModal .shipment-details-column::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+#shipmentModal .shipment-details-column:hover::-webkit-scrollbar-thumb { background: #bdc6c1; }
+#shipmentModal .details-subsection-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 5px 0 12px;
+  padding-bottom: 8px;
+  color: #5b6660;
+  border-bottom: 1px solid #edf0ee;
+  font-size: 12px;
+  font-weight: 650;
+}
+#shipmentModal .details-subsection-heading i { color: #7d8a84; font-size: 15px; }
+#shipmentModal .readonly-crane-summary { align-content: start; }
+#shipmentModal .readonly-crane-summary strong { min-height: 42px; padding: 11px 10px; color: #4d5651; border: 1px solid #e0e4e2; border-radius: 6px; background: #f6f8f7; }
+#shipmentModal .crane-toggle-line { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 10px; padding-left: 11px; border: 1px solid #dfe4e1; border-radius: 6px; background: #fff; }
+#shipmentModal .crane-toggle-line strong { color: #4b5550; font-weight: 500; }
+#shipmentModal .crane-toggle-line button { align-self: stretch; width: 42px; padding: 0; color: #60746a; border: 0; border-left: 1px solid #dfe4e1; border-radius: 0 6px 6px 0; background: #fbfcfb; }
+#shipmentModal .crane-toggle-line button:hover:not(:disabled) { color: #315d82; background: #f2f6f9; }
+#shipmentModal .crane-toggle-line button:focus-visible { position: relative; outline: 2px solid var(--ui-focus); outline-offset: -2px; }
+#shipmentModal .crane-toggle-line button:disabled { color: #a7afab; cursor: not-allowed; }
+#shipmentModal .billing-adjustments-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid #edf0ee; }
+#shipmentModal .billing-adjustments-section h3 { margin: 0 0 10px; color: #5d6762; font-size: 12px; font-weight: 650; }
+#shipmentModal .billing-adjustment-row { display: grid; grid-template-columns: minmax(140px, 1.4fr) repeat(3, minmax(82px, 1fr)) auto; gap: 8px; align-items: center; padding: 7px 0; color: #6b756f; border-top: 1px solid #f0f2f1; font-size: 11px; }
+#shipmentModal .billing-adjustment-row strong { color: #4c5751; font-size: 12px; }
+#shipmentModal .billing-adjustment-row small { padding: 2px 6px; color: #718078; border: 1px solid #e0e5e2; border-radius: 8px; background: #f6f8f7; }
+
+.billing-selection-summary { color: #66716b; font-size: 12px; white-space: nowrap; }
+.billing-table { min-width: 1180px; }
+.billing-table .billing-shipment-row td { vertical-align: middle; }
+.billing-shipment-heading { display: flex; align-items: center; gap: 7px; }
+.billing-shipment-heading > button { width: 22px; height: 22px; padding: 0; color: #718079; border: 0; background: transparent; }
+.billing-shipment-heading strong { display: block; }
+.billing-shipment-heading small { display: block; margin-top: 2px; color: #768079; }
+.storage-badge { padding: 2px 6px; color: #63746b; border: 1px solid #dce5e0; border-radius: 8px; background: #f3f7f5; font-size: 10px; }
+.billing-detail-row td { color: #626d67; background: #fafbfa; }
+.billing-detail-row.billed td { color: #9aa19d; background: #f5f6f5; }
+.billing-detail-row small { display: block; margin-top: 2px; color: inherit; }
+
+.draft-bill-workspace { display: flex; flex-direction: column; min-height: calc(100dvh - 120px); border: 1px solid var(--ui-line); border-radius: 8px; background: #fff; }
+.draft-editor-header { display: flex; align-items: center; gap: 18px; padding: 16px; border-bottom: 1px solid var(--ui-line); }
+.draft-editor-header h2, .draft-editor-header p { margin: 0; }
+.draft-editor-header .draft-dirty-state { margin-left: auto; color: #9a5d31; }
+.draft-table-wrap { flex: 1; }
+.draft-bill-table { min-width: 1120px; }
+.draft-bill-table .draft-cell-input { width: 88px; min-height: 32px; padding: 0 7px; border: 1px solid transparent; border-radius: 4px; background: transparent; }
+.draft-bill-table .draft-cell-input:hover { border-color: #d7ddda; background: #fafbfa; }
+.draft-bill-table .draft-cell-input:focus { border-color: #7e9fbe; background: #fff; outline: 2px solid var(--ui-focus); }
+.draft-bill-table .draft-percent-input { display: inline-flex; align-items: center; }
+.draft-bill-table .draft-fuel-control { display: inline-flex; align-items: center; gap: 4px; }
+.draft-bill-table .draft-fuel-control > select { width: 62px; min-height: 30px; padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #6b756f; font-size: 10px; }
+.draft-bill-table .draft-fuel-control > select:hover,
+.draft-bill-table .draft-fuel-control > select:focus { border-color: #d7ddda; background: #fff; outline: none; }
+.draft-bill-table .draft-percent-input small { margin-left: -22px; color: #7b8580; pointer-events: none; }
+.draft-bill-table .draft-percent-input .draft-cell-input { padding-right: 24px; }
+.draft-bill-table .draft-manual-label { color: #7b6655; font-size: 11px; }
+.draft-bill-table .draft-add-component-row td { padding-top: 5px; padding-bottom: 9px; background: #fbfcfb; }
+.draft-bill-table .draft-add-component-row select { min-height: 31px; margin-right: 7px; padding: 0 28px 0 8px; border: 1px solid #dfe4e1; border-radius: 4px; background: #fff; font-size: 11px; }
+.draft-bill-table .draft-add-component-row .secondary-button { min-height: 31px; padding: 0 10px; font-size: 11px; }
+.draft-editor-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-top: 1px solid var(--ui-line); background: #f8f9f8; }
+#draftBillTotals { display: flex; gap: 20px; }
+#draftBillTotals span { display: grid; gap: 2px; color: #68736d; font-size: 11px; }
+#draftBillTotals strong { color: #27312c; font-size: 14px; }
+
+@media (max-width: 1100px) {
+  #shipmentModal .shipment-modal { width: min(920px, 86vw); }
+}
+@media (max-width: 760px) {
+  #shipmentModal .shipment-modal { width: 100%; }
+  #shipmentModal .shipment-modal .modal-body { display: block; overflow-y: auto; }
+  #shipmentModal .shipment-details-column { overflow: visible; }
+  #shipmentModal .shipment-details-column:first-child { border-right: 0; }
+  .draft-editor-footer { align-items: stretch; flex-direction: column; }
+  #draftBillTotals { justify-content: space-between; }
 }

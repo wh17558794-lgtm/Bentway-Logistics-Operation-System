@@ -16,7 +16,7 @@
   </script>
   <link rel="stylesheet" href="assets/tabler-icons/tabler-icons.min.css?v=3.46.0">
   <link rel="stylesheet" href="app.css?v=20260813-9">
-  <link rel="stylesheet" href="operations-ui.css?v=20260816-1">
+  <link rel="stylesheet" href="operations-ui.css?v=20260826-1">
 </head>
 <body>
   <div class="boot-screen" id="bootScreen">
@@ -111,7 +111,7 @@
           </div>
           <div class="workspace-default-actions">
             <button class="table-mode-toggle" id="pendingSortToggle" type="button" aria-label="Show oldest shipments first" title="Show oldest shipments first"><i class="ti ti-switch-vertical" aria-hidden="true"></i></button>
-            <button class="table-mode-toggle" id="tableModeToggle" type="button" data-pending-only aria-label="Switch to Y table layout" title="Switch to Y table layout">
+            <button class="table-mode-toggle" id="tableModeToggle" type="button" data-pending-only aria-label="Switch to Billing View" title="Switch to Billing View">
               <svg class="icon-tabler icon-tabler-switch-horizontal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M16 3l4 4l-4 4"></path>
                 <path d="M10 7l10 0"></path>
@@ -157,6 +157,11 @@
           </div>
         </div>
 
+        <div class="workspace-action-group" data-topbar-actions="billing" hidden>
+          <span class="billing-selection-summary" id="billingSelectionSummary">0 Shipments · 0 Charges · Total (incl GST) $0.00</span>
+          <button class="primary-button icon-button-label" id="createBillButton" type="button" disabled><i class="ti ti-file-invoice" aria-hidden="true"></i><span>Create Bill</span></button>
+        </div>
+
         <div class="workspace-action-group" data-topbar-actions="map" hidden>
           <button class="secondary-button icon-button-label" id="backToPendingButton" type="button"><i class="ti ti-arrow-left" aria-hidden="true"></i><span>Back to Shipments</span></button>
         </div>
@@ -194,6 +199,14 @@
           </span>
           <span class="nav-text">Pending Shipments</span>
           <span class="nav-count" id="pendingNavCount">0</span>
+        </button>
+        <button class="nav-item" type="button" data-view="billing" title="Billing">
+          <span class="nav-icon" aria-hidden="true"><i class="ti ti-file-invoice"></i></span>
+          <span class="nav-text">Billing</span>
+        </button>
+        <button class="nav-item" id="billingProfilesNav" type="button" data-view="billing-profiles" title="Billing Profiles" hidden>
+          <span class="nav-icon" aria-hidden="true"><i class="ti ti-building-bank"></i></span>
+          <span class="nav-text">Billing Profiles</span>
         </button>
         <button class="nav-item" type="button" data-view="completed" title="Shipment History">
           <span class="nav-icon" aria-hidden="true">
@@ -239,7 +252,7 @@
       <section class="view active" id="pendingView" data-view-panel="pending">
         <div class="content-card">
           <div class="table-wrap">
-            <table class="data-table shipment-table pending-shipment-table" id="pendingShipmentTable" data-table-mode="x">
+            <table class="data-table shipment-table pending-shipment-table" id="pendingShipmentTable" data-table-mode="ov">
               <thead>
                 <tr id="pendingTableHeadRow">
                   <th class="check-cell"><input id="selectAllPending" type="checkbox" aria-label="Select all pending shipments"></th>
@@ -365,6 +378,73 @@
         </div>
       </section>
 
+      <section class="view" id="billingView" data-view-panel="billing">
+        <div class="billing-filter-bar" aria-label="Billing filters">
+          <select id="billingCustomerFilter" aria-label="Customer"><option value="all">All customers</option></select>
+          <select id="billingBatchFilter" aria-label="Import Batch"><option value="all">All import batches</option></select>
+          <input id="billingContainerFilter" type="search" placeholder="Container" aria-label="Container">
+          <input id="billingSearch" type="search" placeholder="Tracking / Reference" aria-label="Tracking number or reference">
+          <select id="billingChargeTypeFilter" aria-label="Charge Type">
+            <option value="all">All charge types</option><option value="delivery">Delivery</option><option value="storage">Storage</option><option value="crane">Crane Truck Service</option><option value="container">Container Service</option>
+          </select>
+          <select id="billingStatusFilter" aria-label="Billing Status"><option value="unbilled">Unbilled</option><option value="billed">Billed</option></select>
+        </div>
+        <div id="billingWorkspace">
+        <div class="content-card">
+          <div class="table-wrap"><table class="data-table billing-table"><thead><tr><th class="check-cell"></th><th>Shipment / Container / Reference</th><th>Delivery Charge</th><th>Tail Lift / Crane</th><th>Fuel Levy</th><th>Storage</th><th>GST</th><th>Total (incl GST)</th></tr></thead><tbody id="billingTableBody"></tbody></table></div>
+          <div class="empty-state" id="billingEmpty" hidden><span><i class="ti ti-file-off"></i></span><h3>No matching charges</h3><p>Adjust the Billing filters to see another set.</p></div>
+        </div>
+        </div>
+        <section class="draft-bill-workspace" id="draftBillPanel" hidden aria-label="Draft Bill editor">
+          <header class="draft-editor-header">
+            <button class="secondary-button icon-button-label" id="backToBillingButton" type="button"><i class="ti ti-arrow-left"></i><span>Back to Billing</span></button>
+            <div><p class="eyebrow">BILLING EDITOR</p><h2>Draft Bill</h2><span id="draftBillSummary"></span></div>
+            <span class="draft-dirty-state" id="draftDirtyState" hidden>Unsaved changes</span>
+          </header>
+          <div class="table-wrap draft-table-wrap"><table class="data-table draft-bill-table"><thead><tr><th>Container No.</th><th>Reference No.</th><th>Description</th><th>Qty</th><th>Rate</th><th>Sub (AUD)</th><th>GST</th><th>Total</th><th></th></tr></thead><tbody id="draftBillItems"></tbody></table></div>
+          <footer class="draft-editor-footer"><div id="draftBillTotals"></div><div class="row-actions"><button class="danger-outline-button" id="discardDraftBillButton" type="button">Discard Draft</button><button class="secondary-button" id="discardDraftChangesButton" type="button" disabled>Discard Changes</button><button class="secondary-button" id="saveDraftChangesButton" type="button" disabled>Save Changes</button><button class="primary-button" id="finaliseDraftBillButton" type="button">Finalise</button></div></footer>
+        </section>
+      </section>
+
+      <section class="view billing-profiles-view" id="billingProfilesView" data-view-panel="billing-profiles">
+        <div class="billing-profiles-layout">
+          <aside class="content-card billing-profile-list-panel" aria-label="Customers">
+            <header><p class="eyebrow">CUSTOMERS</p><h2>Billing Profiles</h2><p>Defaults are copied to new shipments and future customer switches.</p></header>
+            <div id="billingProfileList" class="billing-profile-list"></div>
+          </aside>
+          <form class="content-card billing-profile-editor" id="billingProfileForm" autocomplete="off">
+            <header class="billing-profile-editor-header">
+              <div><p class="eyebrow">ADMIN SETTINGS</p><h2 id="billingProfileTitle">Select a customer</h2><p id="billingProfileUpdated">Last updated: /</p></div>
+              <button class="primary-button" id="saveBillingProfileButton" type="submit">Save Profile</button>
+            </header>
+            <input name="customer_id" type="hidden">
+            <div class="billing-profile-sections">
+              <section><h3>Company and billing contact</h3><div class="form-grid">
+                <label class="form-field"><span>Legal Company Name</span><input name="legal_company_name"></label>
+                <label class="form-field"><span>Trading Name</span><input name="trading_name"></label>
+                <label class="form-field"><span>ABN</span><input name="abn"></label>
+                <label class="form-field"><span>Billing Contact</span><input name="billing_contact"></label>
+                <label class="form-field form-field-wide"><span>Billing Address</span><input name="billing_address"></label>
+                <label class="form-field"><span>Billing Email</span><input name="billing_email" type="email"></label>
+                <label class="form-field"><span>CC Email</span><input name="cc_email" type="email"></label>
+                <label class="form-field"><span>Billing Phone</span><input name="billing_phone"></label>
+                <label class="form-field"><span>Billing Frequency</span><select name="billing_frequency"><option>On Demand</option><option>Weekly</option></select></label>
+              </div></section>
+              <section><h3>Pricing defaults</h3><div class="form-grid">
+                <label class="form-field"><span>Tail Lift Fee (AUD)</span><input name="default_tail_lift_fee" type="number" min="0" step="0.01" required></label>
+                <label class="form-field"><span>Crane Truck fallback (AUD)</span><input value="850" readonly></label>
+                <label class="form-field"><span>Fuel Levy (%)</span><input name="default_fuel_levy_percent" type="number" min="0" max="100" step="0.01" required></label>
+                <label class="form-field"><span>GST (%)</span><input name="default_gst_percent" type="number" min="0" max="100" step="0.01" required></label>
+                <label class="form-field"><span>Storage Rate (AUD / m³ / week)</span><input name="default_storage_rate" type="number" min="0" step="0.01" required></label>
+                <label class="form-field"><span>Warehouse Booking (AUD ex GST)</span><input name="default_warehouse_booking_fee" type="number" min="0" step="0.01" required></label>
+                <label class="form-field"><span>Minimum Billable Volume (m³)</span><input name="minimum_billable_volume" type="number" min="0.0001" step="0.0001" required></label>
+                <label class="form-field"><span>Pickup Rate (AUD / kg)</span><input name="default_pickup_rate_per_kg" type="number" min="0.0001" step="0.0001" required></label>
+              </div></section>
+            </div>
+          </form>
+        </div>
+      </section>
+
       <section class="view" id="completedView" data-view-panel="completed">
         <div class="content-card">
           <div class="table-wrap">
@@ -419,41 +499,10 @@
       <form id="shipmentEditForm" autocomplete="off" data-form-type="other">
         <input id="editShipmentId" name="id" type="hidden">
         <div class="modal-body">
-          <div class="form-section billing-details-section">
-            <div class="form-section-heading">
-              <strong><i class="ti ti-cash" aria-hidden="true"></i>Billing &amp; Service Details</strong>
-              <span>Review service fees and the calculated shipment total.</span>
-            </div>
-            <div class="form-grid">
-              <label class="form-field"><span>Tail Lift Service Fee (AUD)</span><input name="tail_lift_service_fee" type="number" min="0" step="0.01" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Crane Required</span>
-                <select name="crane_required">
-                  <option value="negative">Negative</option>
-                  <option value="positive">Positive</option>
-                </select>
-              </label>
-              <label class="form-field" id="craneTruckFeeField" hidden><span>Crane Truck Fee (AUD) *</span><input name="crane_truck_fee" type="number" min="0.01" step="0.01" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span class="fuel-levy-label">Fuel Levy (AUD)<small class="fuel-levy-formula">Volume × Unit Price × 20%</small></span><input name="fuel_levy_override" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Total Charge (AUD)</span><input name="total_charge_override" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
-            </div>
-            <div class="billing-formula" id="billingFormula" aria-live="polite"></div>
-          </div>
-
-          <div class="form-section name-delivery-section">
-            <div class="form-section-heading"><strong><i class="ti ti-address-book" aria-hidden="true"></i>Name &amp; Delivery Details</strong></div>
-            <div class="form-grid">
-              <label class="form-field"><span>Name</span><input name="recipient_name" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Contact Phone</span><input name="recipient_phone" autocomplete="off" data-bw-no-autofill inputmode="tel"></label>
-              <label class="form-field form-field-wide"><span>Delivery Address *</span><input name="delivery_address" required autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Suburb</span><input name="suburb" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>State</span><input name="state" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Postcode</span><input name="postcode" autocomplete="off" data-bw-no-autofill inputmode="numeric"></label>
-              <label class="form-field form-field-wide"><span>Delivery Instructions</span><textarea name="delivery_instructions" rows="3"></textarea></label>
-            </div>
-          </div>
-
-          <div class="form-section shipment-storage-section">
-            <div class="form-section-heading"><strong><i class="ti ti-box" aria-hidden="true"></i>Shipment &amp; Storage Details</strong></div>
+          <div class="shipment-details-column">
+          <div class="form-section">
+            <div class="form-section-heading"><strong><i class="ti ti-package" aria-hidden="true"></i>Overview</strong></div>
+            <div class="details-subsection-heading"><i class="ti ti-box"></i><span>Shipment Information</span></div>
             <div class="form-grid">
               <label class="form-field"><span>Tracking Number *</span><input name="tracking_number" required autocomplete="off" data-bw-no-autofill></label>
               <label class="form-field"><span>Agent Customer *</span><select id="editCustomerSelect" name="customer_id" required></select></label>
@@ -463,15 +512,23 @@
               <label class="form-field"><span>Total Quantity</span><input name="total_quantity" type="number" min="1" step="1" autocomplete="off" data-bw-no-autofill></label>
               <label class="form-field"><span>Weight (kg)</span><input name="weight_kg" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
               <label class="form-field"><span>Volume (m³)</span><input name="volume_m3" type="number" min="0" step="0.0001" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Storage Location</span><input name="warehouse_location" autocomplete="off" data-bw-no-autofill></label>
-              <label class="form-field"><span>Received At</span><input name="inbound_at" type="datetime-local" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Inbound Time</span><input name="inbound_at" type="datetime-local" autocomplete="off" data-bw-no-autofill></label>
+            </div>
+            <div class="details-subsection-heading"><i class="ti ti-map-pin"></i><span>Name &amp; Delivery Details</span></div>
+            <div class="form-grid">
+              <label class="form-field"><span>Recipient</span><input name="recipient_name" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Phone</span><input name="recipient_phone" autocomplete="off" data-bw-no-autofill inputmode="tel"></label>
+              <label class="form-field form-field-wide"><span>Delivery Address *</span><input name="delivery_address" required autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Suburb</span><input name="suburb" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>State</span><input name="state" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field"><span>Postcode</span><input name="postcode" autocomplete="off" data-bw-no-autofill inputmode="numeric"></label>
             </div>
           </div>
 
-          <div class="form-section status-notes-section">
-            <div class="form-section-heading"><strong><i class="ti ti-clipboard-text" aria-hidden="true"></i>Status &amp; Internal Notes</strong></div>
+          <div class="form-section">
+            <div class="form-section-heading"><strong><i class="ti ti-clipboard-text" aria-hidden="true"></i>Operations</strong></div>
             <div class="form-grid">
-              <label class="form-field"><span>Status</span>
+              <label class="form-field"><span>Current Status</span>
                 <select name="current_status">
                   <option value="pending">Pending</option>
                   <option value="message_sent">Message Sent</option>
@@ -484,19 +541,60 @@
                   <option value="cancelled" disabled>Cancelled</option>
                 </select>
               </label>
-              <label class="form-field" id="editStatusDateField" hidden><span>Status Date</span><input name="status_date" type="date" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field" id="editStatusDateField" hidden><span id="editStatusDateLabel">Status Date</span><input name="status_date" type="date" autocomplete="off" data-bw-no-autofill></label>
               <label class="form-field form-field-wide" id="editExceptionReasonField" hidden><span>Exception Reason *</span><textarea name="exception_reason" rows="2"></textarea></label>
               <label class="form-field form-field-wide" id="editExceptionResolutionReasonField" hidden><span>Exception Resolution Reason *</span><textarea name="exception_resolution_reason" rows="2"></textarea></label>
+              <label class="form-field"><span>Warehouse Location</span><input name="warehouse_location" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field form-field-wide"><span>Delivery Instructions</span><textarea name="delivery_instructions" rows="3"></textarea></label>
               <label class="form-field form-field-wide"><span>Internal Notes</span><textarea name="notes" rows="3"></textarea></label>
             </div>
             <div class="shipment-status-note" id="shipmentStatusNote"></div>
+            <div class="operations-inline-actions"><button class="secondary-button icon-button-label" id="prepareShipmentSmsButton" type="button"><i class="ti ti-message" aria-hidden="true"></i><span>Prepare SMS</span></button></div>
+            <div class="details-subsection-heading"><i class="ti ti-crane"></i><span>Crane Service</span></div>
+            <div class="form-grid">
+              <div class="form-field crane-required-control"><span>Crane Required</span><div class="crane-toggle-line"><input name="crane_required" type="hidden" value="negative"><strong id="craneRequiredValue">Negative</strong><button id="toggleCraneRequiredButton" type="button" aria-label="Set Crane Required to Positive" title="Toggle Crane Required"><i class="ti ti-switch-horizontal" aria-hidden="true"></i></button></div></div>
+              <label class="form-field" id="craneTruckFeeField" hidden><span>Crane Truck Fee (AUD) *</span><input name="crane_truck_fee" type="number" min="0.01" step="0.01" autocomplete="off" data-bw-no-autofill></label>
+            </div>
+          </div>
+          </div>
+
+          <div class="shipment-details-column">
+          <div class="form-section billing-details-section">
+            <div class="form-section-heading">
+              <strong><i class="ti ti-cash" aria-hidden="true"></i>Billing</strong>
+              <span>Review the shipment calculation and storage weeks.</span>
+            </div>
+            <div class="form-grid">
+              <label class="form-field"><span>Unit Price (AUD)</span><input name="unit_price" type="number" readonly></label>
+              <label class="form-field"><span>Billable Volume (m³)</span><input name="billable_volume" type="number" readonly></label>
+              <label class="form-field"><span>Tail Lift</span><input name="tail_lift_service_fee" type="number" min="0" step="0.01" autocomplete="off" data-bw-no-autofill></label>
+              <div class="form-field readonly-crane-summary"><span id="billingCraneTitle">Crane Not Required</span><strong id="billingCraneValue">/</strong></div>
+              <label class="form-field"><span class="fuel-levy-label">Fuel Levy (AUD)<small class="fuel-levy-formula">Delivery Charge × Rate</small></span><input name="fuel_levy_override" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
+              <label class="form-field" id="warehouseBookingFeeField" hidden><span>Warehouse Booking Fee (AUD)</span><span class="inline-money-control"><input name="warehouse_booking_charge" type="number" min="0" step="0.01"><button id="toggleWarehouseBookingFeeButton" type="button" title="Toggle $150 / $200" aria-label="Toggle warehouse booking fee between 150 and 200 dollars"><i class="ti ti-switch-2"></i></button></span></label>
+              <label class="form-field"><span>Total Charge (AUD)</span><input name="total_charge_override" type="number" min="0" step="0.001" autocomplete="off" data-bw-no-autofill></label>
+            </div>
+            <div class="billing-formula" id="billingFormula" aria-live="polite"></div>
+            <div class="storage-fees-section">
+              <h3>Storage Schedule</h3>
+              <div id="shipmentStorageFees" class="storage-fee-list"><p class="empty-inline">No storage fees.</p></div>
+            </div>
+            <div class="billing-adjustments-section">
+              <h3>Billing Adjustments &amp; Supplementary Charges</h3>
+              <div id="shipmentBillingAdjustments" class="billing-adjustment-list"><p class="empty-inline">No billing adjustments or supplementary charges.</p></div>
+            </div>
+          </div>
+
+          <div class="form-section activity-section">
+            <div class="form-section-heading"><strong><i class="ti ti-history" aria-hidden="true"></i>Activity</strong><span>Shipment event history is read-only.</span></div>
+            <ol id="shipmentActivityList" class="shipment-activity-list"><li class="empty-inline">No activity recorded.</li></ol>
+          </div>
           </div>
         </div>
 
         <footer class="modal-footer">
           <button class="danger-outline-button" id="deleteShipmentButton" type="button" hidden>Delete Shipment</button>
           <span class="modal-footer-spacer"></span>
-          <button class="secondary-button icon-button-label" id="prepareShipmentSmsButton" type="button"><i class="ti ti-message" aria-hidden="true"></i><span>Prepare SMS</span></button>
+          <button class="secondary-button icon-button-label" id="resumeShipmentButton" type="button" hidden><i class="ti ti-history" aria-hidden="true"></i><span>Resume to Pending</span></button>
           <button class="secondary-button" id="dismissShipmentModalButton" type="button">Cancel</button>
           <button class="primary-button submit-button" id="saveShipmentChangesButton" type="button">Save Changes</button>
         </footer>
@@ -598,6 +696,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="supabase-config.js?v=20260812-1"></script>
   <script src="shipment-formatters.js?v=20260815-1"></script>
-  <script src="app.js?v=20260816-1"></script>
+  <script src="billing-logic.js?v=20260826-1"></script>
+  <script src="app.js?v=20260826-1"></script>
 </body>
 </html>

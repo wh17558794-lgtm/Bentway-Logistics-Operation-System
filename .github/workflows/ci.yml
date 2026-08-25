@@ -1,0 +1,30 @@
+name: BentWay checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check app.js
+          node --check google-app.js
+          node --check billing-logic.js
+          node --check shipment-formatters.js
+      - name: Regression tests
+        run: |
+          node status-workflow.test.mjs
+          node pricing-rates.test.mjs
+          node billing-workflow.test.mjs
+          node sql36-workflow.test.mjs

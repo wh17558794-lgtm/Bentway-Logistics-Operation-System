@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('./25_add_v2_postcode_3004.sql', import.meta.url), 'utf8');
 const billingSql = readFileSync(new URL('./26_minimum_billable_volume.sql', import.meta.url), 'utf8');
 const syncedBillingSql = readFileSync(new URL('./27_sync_minimum_billable_volume.sql', import.meta.url), 'utf8');
+const currentBillingSql = readFileSync(new URL('./34_shipment_storage_and_container_charges.sql', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./app.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 
@@ -16,10 +17,11 @@ assert.equal((syncedBillingSql.match(/greatest\(volume_m3, 1\)/g) || []).length,
 assert.match(syncedBillingSql, /drop column fuel_levy/);
 assert.match(syncedBillingSql, /add column fuel_levy/);
 assert.match(syncedBillingSql, /add column total_charge/);
-assert.match(app, /const billableVolume = volume === null \? null : Math\.max\(volume, 1\)/);
-assert.match(html, /fuel-levy-formula">Volume × Unit Price × 20%/);
-assert.match(app, /\(Volume \(min 1 m³\) × Unit Price \+ Tail Lift Service Fee \+ Fuel Levy\)/);
-assert.match(app, /\+ \$\{formulaNumber\(fuelLevy, 3\)\}/);
-assert.doesNotMatch(app, /Billable Volume/);
+assert.match(currentBillingSql, /greatest\(v_shipment\.volume_m3, v_shipment\.minimum_billable_volume\)/);
+assert.match(currentBillingSql, /case when v_shipment\.crane_required[\s\S]*?crane_truck_fee[\s\S]*?tail_lift_service_fee/);
+assert.match(currentBillingSql, /v_delivery \+ v_service \+ v_fuel \+ v_storage/);
+assert.match(html, /fuel-levy-formula">Delivery Charge × Rate/);
+assert.match(html, /Billable Volume \(m³\)/);
+assert.match(app, /Unbilled Storage Fees/);
 
 console.log('Pricing and billing checks passed.');
